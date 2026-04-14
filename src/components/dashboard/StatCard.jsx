@@ -1,114 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import PageContainer from '@/components/shared/PageContainer';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import StatusBadge from '@/components/shared/StatusBadge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Car, CalendarDays, Plus } from 'lucide-react';
-import { vehiclesApi, customersApi } from '@/services/api';
-import VehicleForm from '@/components/vehicles/VehicleForm';
-import { format } from 'date-fns';
+import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
-export default function CustomerDetail({ customer, onBack }) {
-  const [vehicles, setVehicles] = useState([]);
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [vehicleModal, setVehicleModal] = useState(false);
-
-  useEffect(() => {
-    async function load() {
-      const [v, a] = await Promise.all([
-        vehiclesApi.getByCustomer(customer.id).catch(() => []),
-        customersApi.getAppointments(customer.id).catch(() => []),
-      ]);
-      setVehicles(Array.isArray(v) ? v : []);
-      setAppointments(Array.isArray(a) ? a : []);
-      setLoading(false);
-    }
-    load();
-  }, [customer.id]);
-
-  const handleVehicleSaved = () => {
-    setVehicleModal(false);
-    vehiclesApi.getByCustomer(customer.id).then(v => setVehicles(Array.isArray(v) ? v : []));
-  };
-
-  if (loading) return <LoadingSpinner />;
-
+export default function StatCard({ title, value, icon: Icon, trend, color = 'primary' }) {
   return (
-    <PageContainer
-      title={customer.fullName}
-      subtitle={`${customer.email} • ${customer.phone}`}
-      actions={
-        <Button variant="outline" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4 mr-2" />Back
-        </Button>
-      }
-    >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Vehicles */}
-        <Card>
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="font-heading text-base flex items-center gap-2">
-              <Car className="w-4 h-4" />Vehicles
-            </CardTitle>
-            <Button size="sm" onClick={() => setVehicleModal(true)}>
-              <Plus className="w-3 h-3 mr-1" />Add
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {vehicles.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No vehicles registered</p>
-            ) : (
-              <div className="space-y-3">
-                {vehicles.map(v => (
-                  <div key={v.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <div>
-                      <p className="text-sm font-semibold">{v.make} {v.model} ({v.year})</p>
-                      <p className="text-xs text-muted-foreground">Plate: {v.plateNumber}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+    <Card className="relative overflow-hidden group hover:shadow-lg transition-shadow">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</p>
+            <p className="text-3xl font-heading font-bold mt-2 text-foreground">{value}</p>
+            {trend && (
+              <p className="text-xs font-medium mt-2 text-green-600">{trend}</p>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Appointments */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="font-heading text-base flex items-center gap-2">
-              <CalendarDays className="w-4 h-4" />Appointment History
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {appointments.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No appointments</p>
-            ) : (
-              <div className="space-y-3">
-                {appointments.map(a => (
-                  <div key={a.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <div>
-                      <p className="text-sm font-semibold">
-                        {a.appointmentDate ? format(new Date(a.appointmentDate), 'MMM d, yyyy') : 'N/A'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{a.notes || 'No notes'}</p>
-                    </div>
-                    <StatusBadge status={a.status || 'PENDING'} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <VehicleForm
-        open={vehicleModal}
-        onOpenChange={setVehicleModal}
-        customerId={customer.id}
-        onSaved={handleVehicleSaved}
-      />
-    </PageContainer>
+          </div>
+          <div className={cn(
+            'w-12 h-12 rounded-xl flex items-center justify-center',
+            color === 'primary' && 'bg-primary/10',
+            color === 'secondary' && 'bg-secondary/20',
+            color === 'accent' && 'bg-accent/20',
+            color === 'destructive' && 'bg-destructive/10',
+          )}>
+            <Icon className={cn(
+              'w-6 h-6',
+              color === 'primary' && 'text-primary',
+              color === 'secondary' && 'text-secondary',
+              color === 'accent' && 'text-accent-foreground',
+              color === 'destructive' && 'text-destructive',
+            )} />
+          </div>
+        </div>
+      </CardContent>
+      <div className={cn(
+        'absolute bottom-0 left-0 right-0 h-1',
+        color === 'primary' && 'bg-primary',
+        color === 'secondary' && 'bg-secondary',
+        color === 'accent' && 'bg-accent',
+        color === 'destructive' && 'bg-destructive',
+      )} />
+    </Card>
   );
 }
