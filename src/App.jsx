@@ -1,31 +1,36 @@
-import { Toaster } from 'sonner';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClientInstance } from '@/lib/query-client';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import PageNotFound from './lib/PageNotFound';
-import { AutoCareAuthProvider, useAutoAuth } from '@/contexts/AuthContext';
+import { Toaster } from "sonner";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClientInstance } from "@/lib/query-client";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+} from "react-router-dom";
+import PageNotFound from "./lib/PageNotFound";
+import { AutoCareAuthProvider, useAutoAuth } from "@/contexts/AuthContext";
 
 // Layout
-import AppLayout from '@/components/layout/AppLayout';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import AppLayout from "@/components/layout/AppLayout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 // Pages
-import LoginPage from '@/components/auth/LoginPage';
-import Dashboard from '@/pages/Dashboard';
-import Customers from '@/pages/Customers';
-import Vehicles from '@/pages/Vehicles';
-import Appointments from '@/pages/Appointments';
-import ServiceTypes from '@/pages/ServiceTypes';
-import Staff from '@/pages/Staff';
-import ServiceTracking from '@/pages/ServiceTracking';
-import Invoices from '@/pages/Invoices';
-import Inventory from '@/pages/Inventory';
+import LoginPage from "@/components/auth/LoginPage";
+import Dashboard from "@/pages/Dashboard";
+import Customers from "@/pages/Customers";
+import Vehicles from "@/pages/Vehicles";
+import Appointments from "@/pages/Appointments";
+import ServiceTypes from "@/pages/ServiceTypes";
+import Staff from "@/pages/Staff";
+import ServiceTracking from "@/pages/ServiceTracking";
+import Invoices from "@/pages/Invoices";
+import Inventory from "@/pages/Inventory";
 
 const ROLE_HOME = {
-  admin: '/',
-  staff: '/',
-  mechanic: '/service-tracking',
-  cashier: '/invoices',
+  admin: "/",
+  staff: "/",
+  mechanic: "/service-tracking",
+  cashier: "/invoices",
 };
 
 function AuthGate({ children }) {
@@ -45,8 +50,8 @@ function AuthGate({ children }) {
 
 function RoleHome() {
   const { user } = useAutoAuth();
-  const home = ROLE_HOME[user?.role] || '/';
-  if (home !== '/') return <Navigate to={home} replace />;
+  const home = ROLE_HOME[user?.role] || "/";
+  if (home !== "/") return <Navigate to={home} replace />;
   return <Dashboard />;
 }
 
@@ -54,22 +59,86 @@ function App() {
   return (
     <AutoCareAuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router>
+        <Router
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <Routes>
             {/* Public */}
             <Route path="/login" element={<LoginPage />} />
 
             {/* Protected with layout */}
-            <Route element={<AuthGate><AppLayout /></AuthGate>}>
+            <Route
+              element={
+                <AuthGate>
+                  <AppLayout />
+                </AuthGate>
+              }
+            >
               <Route path="/" element={<RoleHome />} />
-              <Route path="/customers" element={<ProtectedRoute module="customers"><Customers /></ProtectedRoute>} />
-              <Route path="/vehicles" element={<ProtectedRoute module="vehicles"><Vehicles /></ProtectedRoute>} />
-              <Route path="/appointments" element={<ProtectedRoute module="appointments"><Appointments /></ProtectedRoute>} />
-              <Route path="/service-types" element={<ProtectedRoute module="service-types"><ServiceTypes /></ProtectedRoute>} />
-              <Route path="/staff" element={<ProtectedRoute module="staff"><Staff /></ProtectedRoute>} />
-              <Route path="/service-tracking" element={<ProtectedRoute module="service-tracking"><ServiceTracking /></ProtectedRoute>} />
-              <Route path="/invoices" element={<ProtectedRoute module="invoices"><Invoices /></ProtectedRoute>} />
-              <Route path="/inventory" element={<ProtectedRoute module="inventory"><Inventory /></ProtectedRoute>} />
+              <Route
+                path="/customers"
+                element={
+                  <ProtectedRoute module="customers">
+                    <Customers />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/vehicles"
+                element={
+                  <ProtectedRoute module="vehicles">
+                    <Vehicles />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/appointments"
+                element={
+                  <ProtectedRoute module="appointments">
+                    <Appointments />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/service-types"
+                element={
+                  <ProtectedRoute module="service-types">
+                    <ServiceTypes />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/staff"
+                element={
+                  <ProtectedRoute module="staff">
+                    <Staff />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/service-tracking"
+                element={
+                  <ProtectedRoute module="service-tracking">
+                    <ServiceTracking />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/invoices"
+                element={
+                  <ProtectedRoute module="invoices">
+                    <Invoices />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/inventory"
+                element={
+                  <ProtectedRoute module="inventory">
+                    <Inventory />
+                  </ProtectedRoute>
+                }
+              />
             </Route>
 
             <Route path="*" element={<PageNotFound />} />

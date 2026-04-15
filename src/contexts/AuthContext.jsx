@@ -1,14 +1,12 @@
-import { createClient } from '@base44/sdk';
-import { appParams } from '@/lib/app-params';
+/**
+ * Auth Context Re-exports
+ *
+ * This file re-exports the auth context from src/lib/AuthContext.jsx
+ * for backward compatibility with imports from @/contexts/AuthContext
+ */
 
-const { appId, token, functionsVersion, appBaseUrl } = appParams;
+import { AuthProvider, useAuth } from "@/lib/AuthContext";
 
-//Create a client with authentication required
-export const base44 = createClient({
-  appId,
-  token,
-  functionsVersion,
-  serverUrl: '',
-  requiresAuth: false,
-  appBaseUrl
-});
+// Re-export with consistent naming
+export const AutoCareAuthProvider = AuthProvider;
+export const useAutoAuth = useAuth;

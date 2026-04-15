@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Car, CalendarDays, Plus } from 'lucide-react';
 import { vehiclesApi, customersApi } from '@/services/api';
-import VehicleForm from '@/components/vehicles/VehicleForm';
+import VechicleForm from "@/components/vechicles/VechicleForm";
 import { format } from 'date-fns';
 
 export default function CustomerDetail({ customer, onBack }) {
@@ -103,7 +103,7 @@ export default function CustomerDetail({ customer, onBack }) {
         </Card>
       </div>
 
-      <VehicleForm
+      <VechicleForm
         open={vehicleModal}
         onOpenChange={setVehicleModal}
         customerId={customer.id}

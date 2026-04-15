@@ -1,141 +1,124 @@
-import React, { useState, useEffect } from 'react';
-import { addMonths } from 'date-fns';
-import PageContainer from '@/components/shared/PageContainer';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import StatusBadge from '@/components/shared/StatusBadge';
-import AppointmentCalendar from '@/components/appointments/AppointmentCalendar';
-import AppointmentForm from '@/components/appointments/AppointmentForm';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, CalendarDays, Pencil, Trash2 } from 'lucide-react';
-import { appointmentsApi } from '@/services/api';
-import { notify } from '@/lib/notify';
-import { format, isSameDay } from 'date-fns';
+import React from "react";
+import {
+  format,
+  getDaysInMonth,
+  startOfMonth,
+  getDay,
+  addDays,
+  isSameDay,
+  isSameMonth,
+} from "date-fns";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const STATUSES = ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
+export default function AppointmentCalendar({
+  currentMonth,
+  onMonthChange,
+  appointments = [],
+  selectedDate,
+  onDateClick,
+}) {
+  const monthStart = startOfMonth(currentMonth);
+  const daysInMonth = getDaysInMonth(monthStart);
+  const startingDayOfWeek = getDay(monthStart);
+  const days = [];
 
-export default function Appointments() {
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingAppt, setEditingAppt] = useState(null);
+  // Add empty cells for days before month starts
+  for (let i = 0; i < startingDayOfWeek; i++) {
+    days.push(null);
+  }
 
-  const load = async () => {
-    try {
-      const data = await appointmentsApi.list();
-      setAppointments(Array.isArray(data) ? data : []);
-    } catch { setAppointments([]); }
-    setLoading(false);
+  // Add days of the month
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push(addDays(monthStart, i - 1));
+  }
+
+  const hasAppointments = (date) => {
+    return appointments.some(
+      (a) => a.appointmentDate && isSameDay(new Date(a.appointmentDate), date),
+    );
   };
 
-  useEffect(() => { load(); }, []);
-
-  const dayAppointments = selectedDate
-    ? appointments.filter(a => a.appointmentDate && isSameDay(new Date(a.appointmentDate), selectedDate))
-    : [];
-
-  const handleStatusChange = async (appt, newStatus) => {
-    try {
-      await appointmentsApi.updateStatus(appt.id, { status: newStatus, notes: `Status changed to ${newStatus}` });
-      notify.success(`Status updated to ${newStatus}`);
-      load();
-    } catch (err) {
-      notify.error(err.message || 'Error');
-    }
+  const appointmentCount = (date) => {
+    return appointments.filter(
+      (a) => a.appointmentDate && isSameDay(new Date(a.appointmentDate), date),
+    ).length;
   };
-
-  const handleDelete = async (id) => {
-    try {
-      await appointmentsApi.delete(id);
-      notify.success('Appointment cancelled');
-      load();
-    } catch (err) {
-      notify.error(err.message || 'Error');
-    }
-  };
-
-  if (loading) return <LoadingSpinner />;
 
   return (
-    <PageContainer
-      title="Appointments"
-      subtitle="Schedule and manage appointments"
-      actions={
-        <Button onClick={() => { setEditingAppt(null); setFormOpen(true); }} className="bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4 mr-2" />New Appointment
-        </Button>
-      }
-    >
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Calendar */}
-        <div className="lg:col-span-2">
-          <AppointmentCalendar
-            currentMonth={currentMonth}
-            onMonthChange={(dir) => setCurrentMonth(addMonths(currentMonth, dir))}
-            appointments={appointments}
-            selectedDate={selectedDate}
-            onDateClick={setSelectedDate}
-          />
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="font-heading text-base">
+            {format(currentMonth, "MMMM yyyy")}
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => onMonthChange(-1)}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => onMonthChange(1)}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* Weekday headers */}
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+            <div
+              key={day}
+              className="text-center text-xs font-semibold text-muted-foreground py-2"
+            >
+              {day}
+            </div>
+          ))}
         </div>
 
-        {/* Day Details */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="font-heading text-base flex items-center gap-2">
-              <CalendarDays className="w-4 h-4" />
-              {selectedDate ? format(selectedDate, 'MMM d, yyyy') : 'Select a date'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!selectedDate ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">Click on a date to see appointments</p>
-            ) : dayAppointments.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No appointments for this date</p>
-            ) : (
-              <div className="space-y-3">
-                {dayAppointments.map(a => (
-                  <div key={a.id} className="p-3 rounded-lg border border-border">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="text-sm font-semibold">{a.customerName || 'Customer'}</p>
-                        <p className="text-xs text-muted-foreground">{a.appointmentTime}</p>
-                      </div>
-                      <StatusBadge status={a.status || 'PENDING'} />
-                    </div>
-                    {a.notes && <p className="text-xs text-muted-foreground mb-2">{a.notes}</p>}
-                    <div className="flex items-center gap-1 mt-2">
-                      <Select onValueChange={(v) => handleStatusChange(a, v)}>
-                        <SelectTrigger className="h-7 text-xs w-32">
-                          <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingAppt(a); setFormOpen(true); }}>
-                        <Pencil className="w-3 h-3" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(a.id)}>
-                        <Trash2 className="w-3 h-3 text-destructive" />
-                      </Button>
+        {/* Calendar days */}
+        <div className="grid grid-cols-7 gap-1">
+          {days.map((day, idx) =>
+            day ? (
+              <button
+                key={idx}
+                onClick={() => onDateClick(day)}
+                className={cn(
+                  "p-2 text-xs rounded-lg border transition-colors relative group",
+                  isSameMonth(day, currentMonth)
+                    ? "hover:bg-muted cursor-pointer"
+                    : "text-muted-foreground/50",
+                  selectedDate && isSameDay(day, selectedDate)
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border",
+                )}
+              >
+                <div className="font-semibold">{format(day, "d")}</div>
+                {hasAppointments(day) && (
+                  <div className="text-[10px] mt-0.5">
+                    <div className="text-primary font-bold">
+                      {appointmentCount(day)} appt
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <AppointmentForm
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        appointment={editingAppt}
-        onSaved={() => { setFormOpen(false); load(); }}
-      />
-    </PageContainer>
+                )}
+              </button>
+            ) : (
+              <div key={idx} className="p-2" />
+            ),
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

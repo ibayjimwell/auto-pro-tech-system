@@ -5,7 +5,27 @@ import {
   serviceTypesStore,
   invoicesStore,
   staffStore,
-} from './mockData';
+} from "./mockData";
+
+/**
+ * FRONTEND-ONLY API LAYER
+ *
+ * Currently using mock/dummy data from mockData.js for development
+ *
+ * TO CONNECT TO YOUR BACKEND:
+ * 1. Update each API object to make HTTP calls to your backend
+ * 2. Example for customers:
+ *    export const customersApi = {
+ *      list: () => fetch('/api/customers').then(r => r.json()),
+ *      get: (id) => fetch(`/api/customers/${id}`).then(r => r.json()),
+ *      create: (data) => fetch('/api/customers', {
+ *        method: 'POST',
+ *        body: JSON.stringify(data)
+ *      }).then(r => r.json()),
+ *      ...
+ *    }
+ * 3. Update mockData.js stores with real API calls
+ */
 
 // Customers
 export const customersApi = {
@@ -31,7 +51,8 @@ export const appointmentsApi = {
   list: () => appointmentsStore.list(),
   get: (id) => appointmentsStore.get(id),
   getCalendar: () => appointmentsStore.list(),
-  getAvailableSlots: (date, serviceTypeId) => appointmentsStore.getAvailableSlots(date, serviceTypeId),
+  getAvailableSlots: (date, serviceTypeId) =>
+    appointmentsStore.getAvailableSlots(date, serviceTypeId),
   create: (data) => appointmentsStore.create(data),
   update: (id, data) => appointmentsStore.update(id, data),
   delete: (id) => appointmentsStore.delete(id),
@@ -52,7 +73,8 @@ export const serviceTypesApi = {
 export const invoicesApi = {
   list: (status) => invoicesStore.list(status),
   get: (id) => invoicesStore.get(id),
-  getByAppointment: (appointmentId) => invoicesStore.getByAppointment(appointmentId),
+  getByAppointment: (appointmentId) =>
+    invoicesStore.getByAppointment(appointmentId),
   create: (data) => invoicesStore.create(data),
   update: (id, data) => invoicesStore.update(id, data),
   delete: (id) => invoicesStore.delete(id),

@@ -1,142 +1,74 @@
-import React, { useState, useEffect } from 'react';
-import DataModal from '@/components/shared/DataModal';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { customersApi, vehiclesApi, serviceTypesApi, staffApi, appointmentsApi } from '@/services/api';
-import { notify } from '@/lib/notify';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAutoAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Wrench } from "lucide-react";
 
-export default function AppointmentForm({ open, onOpenChange, appointment, onSaved }) {
-  const [form, setForm] = useState({
-    customerId: '', vehicleId: '', serviceTypeId: '', appointmentDate: '', appointmentTime: '', notes: '', assignedStaffId: ''
-  });
-  const [customers, setCustomers] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
-  const [serviceTypes, setServiceTypes] = useState([]);
-  const [staffList, setStaffList] = useState([]);
-  const [availableSlots, setAvailableSlots] = useState([]);
-  const [saving, setSaving] = useState(false);
+export default function LoginPage() {
+  const [selectedRole, setSelectedRole] = useState("admin");
+  const { login } = useAutoAuth();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!open) return;
-    Promise.all([
-      customersApi.list().catch(() => []),
-      serviceTypesApi.list().catch(() => []),
-      staffApi.list().catch(() => []),
-    ]).then(([c, s, st]) => {
-      setCustomers(Array.isArray(c) ? c : []);
-      setServiceTypes(Array.isArray(s) ? s : []);
-      setStaffList(Array.isArray(st) ? st : []);
-    });
-
-    if (appointment) {
-      setForm({
-        customerId: appointment.customerId || '',
-        vehicleId: appointment.vehicleId || '',
-        serviceTypeId: appointment.serviceTypeId || '',
-        appointmentDate: appointment.appointmentDate || '',
-        appointmentTime: appointment.appointmentTime || '',
-        notes: appointment.notes || '',
-        assignedStaffId: appointment.assignedStaffId || '',
-      });
-    } else {
-      setForm({ customerId: '', vehicleId: '', serviceTypeId: '', appointmentDate: '', appointmentTime: '', notes: '', assignedStaffId: '' });
-    }
-  }, [open, appointment]);
-
-  useEffect(() => {
-    if (form.customerId) {
-      vehiclesApi.getByCustomer(form.customerId).then(v => setVehicles(Array.isArray(v) ? v : [])).catch(() => setVehicles([]));
-    }
-  }, [form.customerId]);
-
-  useEffect(() => {
-    if (form.appointmentDate && form.serviceTypeId) {
-      appointmentsApi.getAvailableSlots(form.appointmentDate, form.serviceTypeId)
-        .then(slots => setAvailableSlots(Array.isArray(slots) ? slots : []))
-        .catch(() => setAvailableSlots([]));
-    }
-  }, [form.appointmentDate, form.serviceTypeId]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      if (appointment) {
-        await appointmentsApi.update(appointment.id, form);
-        notify.success('Appointment updated');
-      } else {
-        await appointmentsApi.create(form);
-        notify.success('Appointment created');
-      }
-      onSaved();
-    } catch (err) {
-      notify.error(err.message || 'Error');
-    }
-    setSaving(false);
+  const handleLogin = () => {
+    login(selectedRole);
+    navigate("/");
   };
 
   return (
-    <DataModal open={open} onOpenChange={onOpenChange} title={appointment ? 'Edit Appointment' : 'New Appointment'} onSubmit={handleSave} isLoading={saving}>
-      <div className="space-y-2">
-        <Label>Customer</Label>
-        <Select value={form.customerId} onValueChange={v => setForm({ ...form, customerId: v, vehicleId: '' })}>
-          <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
-          <SelectContent>
-            {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.fullName}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Vehicle</Label>
-        <Select value={form.vehicleId} onValueChange={v => setForm({ ...form, vehicleId: v })}>
-          <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
-          <SelectContent>
-            {vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.plateNumber} - {v.make} {v.model}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Service Type</Label>
-        <Select value={form.serviceTypeId} onValueChange={v => setForm({ ...form, serviceTypeId: v })}>
-          <SelectTrigger><SelectValue placeholder="Select service" /></SelectTrigger>
-          <SelectContent>
-            {serviceTypes.map(s => <SelectItem key={s.id} value={s.id}>{s.name} - ₱{s.basePrice}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Date</Label>
-          <Input type="date" value={form.appointmentDate} onChange={e => setForm({ ...form, appointmentDate: e.target.value })} />
-        </div>
-        <div className="space-y-2">
-          <Label>Time</Label>
-          {availableSlots.length > 0 ? (
-            <Select value={form.appointmentTime} onValueChange={v => setForm({ ...form, appointmentTime: v })}>
-              <SelectTrigger><SelectValue placeholder="Select slot" /></SelectTrigger>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-2 text-center">
+          <div className="flex justify-center">
+            <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center">
+              <Wrench className="w-6 h-6 text-primary-foreground" />
+            </div>
+          </div>
+          <CardTitle className="text-2xl">Auto Pro Tech</CardTitle>
+          <CardDescription>Service Management System</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <label className="text-sm font-medium">Select User Role</label>
+            <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a role..." />
+              </SelectTrigger>
               <SelectContent>
-                {availableSlots.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="staff">Staff</SelectItem>
+                <SelectItem value="mechanic">Mechanic</SelectItem>
+                <SelectItem value="cashier">Cashier</SelectItem>
               </SelectContent>
             </Select>
-          ) : (
-            <Input type="time" value={form.appointmentTime} onChange={e => setForm({ ...form, appointmentTime: e.target.value })} />
-          )}
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label>Assigned Staff</Label>
-        <Select value={form.assignedStaffId} onValueChange={v => setForm({ ...form, assignedStaffId: v })}>
-          <SelectTrigger><SelectValue placeholder="Assign staff (optional)" /></SelectTrigger>
-          <SelectContent>
-            {staffList.map(s => <SelectItem key={s.id} value={s.id}>{s.fullName} - {s.role}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Notes</Label>
-        <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Additional notes..." />
-      </div>
-    </DataModal>
+            <p className="text-xs text-muted-foreground">
+              For development: Choose a role to login as that user
+            </p>
+          </div>
+
+          <Button onClick={handleLogin} className="w-full" size="lg">
+            Login
+          </Button>
+
+          <div className="text-xs text-muted-foreground text-center border-t pt-4">
+            <p>Development Mode</p>
+            <p>No authentication required</p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
