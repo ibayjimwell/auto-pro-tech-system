@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, CalendarDays, Pencil, Trash2 } from 'lucide-react';
-import { appointmentsApi } from '@/services/api';
+import { appointmentsApi } from '@/api/appointmentsApi';
 import { notify } from '@/lib/notify';
 import { format, isSameDay } from 'date-fns';
+import { useAppointmentsSocket } from '@/hooks/useAppointmentsSocket';
 
 const STATUSES = ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
 
@@ -25,13 +26,26 @@ export default function Appointments() {
 
   const load = async () => {
     try {
-      const data = await appointmentsApi.list();
-      setAppointments(Array.isArray(data) ? data : []);
-    } catch { setAppointments([]); }
+      const res = await appointmentsApi.list();
+      setAppointments(res.data?.data || []);
+    } catch {
+      setAppointments([]);
+    }
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
+
+  // WebSocket real‑time updates
+  useAppointmentsSocket(({ type, appointment }) => {
+    if (type === 'created') {
+      setAppointments(prev => [appointment, ...prev]);
+    } else if (type === 'statusChanged' || type === 'updated') {
+      setAppointments(prev => prev.map(a => a.id === appointment.id ? appointment : a));
+    } else if (type === 'cancelled') {
+      setAppointments(prev => prev.map(a => a.id === appointment.id ? { ...a, status: 'CANCELLED' } : a));
+    }
+  });
 
   const dayAppointments = selectedDate
     ? appointments.filter(a => a.appointmentDate && isSameDay(new Date(a.appointmentDate), selectedDate))
@@ -39,21 +53,24 @@ export default function Appointments() {
 
   const handleStatusChange = async (appt, newStatus) => {
     try {
-      await appointmentsApi.updateStatus(appt.id, { status: newStatus, notes: `Status changed to ${newStatus}` });
+      await appointmentsApi.updateStatus(appt.id, newStatus, `Status changed to ${newStatus}`);
       notify.success(`Status updated to ${newStatus}`);
-      load();
+      // Load fresh data to be safe, socket will also update
+      await load();
     } catch (err) {
-      notify.error(err.message || 'Error');
+      notify.error(err.response?.data?.message || 'Error');
     }
   };
 
   const handleDelete = async (id) => {
-    try {
-      await appointmentsApi.delete(id);
-      notify.success('Appointment cancelled');
-      load();
-    } catch (err) {
-      notify.error(err.message || 'Error');
+    if (window.confirm('Cancel this appointment?')) {
+      try {
+        await appointmentsApi.cancel(id);
+        notify.success('Appointment cancelled');
+        await load();
+      } catch (err) {
+        notify.error(err.response?.data?.message || 'Error');
+      }
     }
   };
 
@@ -100,14 +117,14 @@ export default function Appointments() {
                   <div key={a.id} className="p-3 rounded-lg border border-border">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <p className="text-sm font-semibold">{a.customerName || 'Customer'}</p>
-                        <p className="text-xs text-muted-foreground">{a.appointmentTime}</p>
+                        <p className="text-sm font-semibold">Customer ID: {a.customerId}</p>
+                        <p className="text-xs text-muted-foreground">{a.appointmentTime?.slice(0,5)}</p>
                       </div>
                       <StatusBadge status={a.status || 'PENDING'} />
                     </div>
                     {a.notes && <p className="text-xs text-muted-foreground mb-2">{a.notes}</p>}
                     <div className="flex items-center gap-1 mt-2">
-                      <Select onValueChange={(v) => handleStatusChange(a, v)}>
+                      <Select onValueChange={(v) => handleStatusChange(a, v)} value={a.status}>
                         <SelectTrigger className="h-7 text-xs w-32">
                           <SelectValue placeholder="Status" />
                         </SelectTrigger>

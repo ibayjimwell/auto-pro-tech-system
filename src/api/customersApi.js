@@ -1,10 +1,7 @@
 import apiClient from './client';
 
 export const customersApi = {
-  list: (search = '') => {
-    const url = search ? `/customers?search=${encodeURIComponent(search)}` : '/customers';
-    return apiClient.get(url);
-  },
+  list: (search = '') => apiClient.get(`/customers${search ? `?search=${search}` : ''}`),
   get: (id) => apiClient.get(`/customers/${id}`),
   create: (data) => apiClient.post('/customers', data),
   update: (id, data) => apiClient.put(`/customers/${id}`, data),
