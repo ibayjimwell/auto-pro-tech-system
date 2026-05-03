@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { inventoryStore } from '@/services/inventoryStore';
+import { inventoryApi } from '@/api/inventoryApi';
 import { notify } from '@/lib/notify';
 import { PackagePlus, Search, AlertTriangle, X, Plus, Minus } from 'lucide-react';
 
@@ -14,13 +14,22 @@ export default function ProductPicker({ taskId, taskTitle, appointmentId, usedPr
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (open) inventoryStore.list().then(setItems);
+    if (open) loadItems();
   }, [open]);
+
+  const loadItems = async () => {
+    try {
+      const res = await inventoryApi.list();
+      setItems(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const filtered = items.filter(i =>
     i.name.toLowerCase().includes(search.toLowerCase()) ||
     i.sku.toLowerCase().includes(search.toLowerCase()) ||
-    i.category.toLowerCase().includes(search.toLowerCase())
+    i.category?.toLowerCase().includes(search.toLowerCase())
   );
 
   const getQty = (id) => qty[id] ?? 1;
@@ -29,19 +38,26 @@ export default function ProductPicker({ taskId, taskTitle, appointmentId, usedPr
     const q = getQty(item.id);
     setLoading(true);
     try {
-      const { alert } = await inventoryStore.deductStock(item.id, q, { appointmentId, taskTitle });
-      onDeduct({ inventoryItemId: item.id, name: item.name, qty: q, unit: item.unit, sellPrice: item.sellPrice });
-      notify.success(`${q} × ${item.name} added to task`);
-      if (alert) {
-        const msg = alert.level === 'OUT_OF_STOCK'
-          ? `⚠️ ${item.name} is now OUT OF STOCK`
-          : `⚠️ Low stock: ${item.name} — only ${alert.stockQty} left`;
+      const res = await inventoryApi.deductStock(item.id, q);
+      const updatedItem = res.data.data;
+      onDeduct({
+        inventoryItemId: item.id,
+        name: item.name,
+        qty: q,
+        unit: item.unit,
+        sellPrice: item.sellPrice,
+      });
+      notify.success(`${q} × ${item.name} added to finding`);
+      if (res.data.alert) {
+        const msg = res.data.alert.level === 'LOW_STOCK'
+          ? `⚠️ ${item.name} is now low stock (${res.data.alert.stockQty} left)`
+          : `⚠️ ${item.name} is OUT OF STOCK`;
         notify.warning(msg);
       }
-      // Refresh list
-      inventoryStore.list().then(setItems);
+      // Refresh list to show updated stock
+      await loadItems();
     } catch (err) {
-      notify.error(err.message);
+      notify.error(err.response?.data?.message || 'Failed to deduct stock');
     } finally {
       setLoading(false);
     }
@@ -127,7 +143,7 @@ export default function ProductPicker({ taskId, taskTitle, appointmentId, usedPr
           {/* Used products list */}
           {usedProducts.length > 0 && (
             <div className="p-2 bg-muted/20 border-t border-border">
-              <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">Used in this task:</p>
+              <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">Products in this finding:</p>
               <div className="flex flex-wrap gap-1.5">
                 {usedProducts.map((p, i) => (
                   <Badge key={i} variant="secondary" className="text-[10px] gap-1">
