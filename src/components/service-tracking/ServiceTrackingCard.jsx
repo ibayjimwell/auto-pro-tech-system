@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { ChevronRight, Clock, User, Wrench } from 'lucide-react';
 
-const TRACKING_STATUSES = ['PENDING', 'UNDER_INSPECTION', 'WAITING_APPROVAL', 'IN_PROGRESS', 'COMPLETED'];
+const TRACKING_STATUSES = ['PENDING', 'UNDER_INSPECTION', 'WAITING_FOR_APPROVAL', 'IN_PROGRESS', 'COMPLETED'];
 
 export default function ServiceTrackingCard({ appointment, onClick }) {
   const statusIdx = TRACKING_STATUSES.indexOf(appointment.status);

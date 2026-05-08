@@ -5,11 +5,12 @@ import { CheckCircle2, Loader2, PlayCircle, Trash2 } from "lucide-react";
 import FindingsModal from "./FindingsModal";
 import ConfirmationDialog from "@/components/ui/ConfirmationDialog";
 
-const TaskCard = ({ task, onUpdate, onDelete, appointmentId }) => {
+const TaskCard = ({ task, onUpdate, onDelete, appointmentId, isInProgress = false }) => {
   const [isDoing, setIsDoing] = useState(false);
   const [findingsModal, setFindingsModal] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [startDialogOpen, setStartDialogOpen] = useState(false);
+  const [markDoneConfirmOpen, setMarkDoneConfirmOpen] = useState(false);
 
   const handleDoClick = () => {
     if (task.status === "PENDING") {
@@ -25,7 +26,16 @@ const TaskCard = ({ task, onUpdate, onDelete, appointmentId }) => {
   };
 
   const handleMarkDone = () => {
-    setFindingsModal(true);
+    if (isInProgress) {
+      setMarkDoneConfirmOpen(true);
+    } else {
+      setFindingsModal(true);
+    }
+  };
+
+  const confirmMarkDone = async () => {
+    await onUpdate({ status: "DONE" });
+    setMarkDoneConfirmOpen(false);
   };
 
   const handleFindingsSubmit = async () => {
@@ -93,14 +103,16 @@ const TaskCard = ({ task, onUpdate, onDelete, appointmentId }) => {
         </CardContent>
       </Card>
 
-      <FindingsModal
-        open={findingsModal}
-        onClose={() => setFindingsModal(false)}
-        onSubmit={handleFindingsSubmit}
-        taskTitle={task.title}
-        taskId={task.id}
-        appointmentId={appointmentId}
-      />
+      {!isInProgress && (
+        <FindingsModal
+          open={findingsModal}
+          onClose={() => setFindingsModal(false)}
+          onSubmit={handleFindingsSubmit}
+          taskTitle={task.title}
+          taskId={task.id}
+          appointmentId={appointmentId}
+        />
+      )}
 
       <ConfirmationDialog
         open={startDialogOpen}
@@ -119,6 +131,15 @@ const TaskCard = ({ task, onUpdate, onDelete, appointmentId }) => {
         onConfirm={() => onDelete(task.id)}
         confirmText="Delete"
         variant="destructive"
+      />
+
+      <ConfirmationDialog
+        open={markDoneConfirmOpen}
+        onOpenChange={setMarkDoneConfirmOpen}
+        title="Mark Task as Done"
+        description={`Mark "${task.title}" as completed?`}
+        onConfirm={confirmMarkDone}
+        confirmText="Yes, Mark Done"
       />
     </>
   );
