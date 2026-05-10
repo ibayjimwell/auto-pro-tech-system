@@ -9,15 +9,38 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Cog, Pencil, Trash2, PowerOff } from 'lucide-react';
+import { 
+  Plus, 
+  Cog, 
+  Pencil, 
+  Trash2, 
+  PowerOff, 
+  Search, 
+  ChevronLeft, 
+  ChevronRight,
+  Clock,
+  Tag
+} from 'lucide-react';
 import { serviceTypesApi } from '@/api/serviceTypesApi';
 import { notify } from '@/lib/notify';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
+import { cn } from '@/lib/utils';
 
+/**
+ * ServiceTypes Component: High-Quality Service Management
+ * Features: Material-inspired design, touch-friendly actions, and advanced pagination.
+ */
 export default function ServiceTypes() {
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState(true); // true = show active, false = show disabled
+  const [activeFilter, setActiveFilter] = useState(true); // true = Active, false = Disabled
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  /* --- Pagination State --- */
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  /* --- Modal & Dialog States --- */
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: '', description: '', basePrice: '', durationMinutes: '' });
@@ -25,7 +48,9 @@ export default function ServiceTypes() {
   const [deactivateDialog, setDeactivateDialog] = useState({ open: false, id: null, name: '' });
   const [permanentDeleteDialog, setPermanentDeleteDialog] = useState({ open: false, id: null, name: '' });
 
+  /* --- Data Loading --- */
   const load = async () => {
+    setLoading(true);
     try {
       const res = await serviceTypesApi.list(activeFilter);
       const data = res.data?.data || res.data || [];
@@ -39,8 +64,22 @@ export default function ServiceTypes() {
 
   useEffect(() => {
     load();
+    setCurrentPage(1); // Reset page on filter change
   }, [activeFilter]);
 
+  /* --- Filtered & Paginated Data Logic --- */
+  const filteredTypes = types.filter(t => 
+    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredTypes.length / itemsPerPage);
+  const paginatedData = filteredTypes.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  /* --- Form Handlers --- */
   const openCreate = () => {
     setEditing(null);
     setForm({ name: '', description: '', basePrice: '', durationMinutes: '' });
@@ -76,195 +115,302 @@ export default function ServiceTypes() {
       setModalOpen(false);
       load();
     } catch (err) {
-      notify.error(err.response?.data?.message || 'Error');
+      notify.error(err.response?.data?.message || 'Error saving changes');
     }
     setSaving(false);
   };
 
-  const confirmDeactivate = (id, name) => {
-    setDeactivateDialog({ open: true, id, name });
-  };
-
+  /* --- Action Handlers --- */
   const handleDeactivate = async () => {
     try {
       await serviceTypesApi.deactivate(deactivateDialog.id);
-      notify.success('Service type deactivated');
+      notify.success('Service deactivated');
       setDeactivateDialog({ open: false, id: null, name: '' });
       load();
     } catch (err) {
-      notify.error(err.response?.data?.message || 'Failed to deactivate');
+      notify.error('Failed to deactivate');
     }
-  };
-
-  const confirmPermanentDelete = (id, name) => {
-    setPermanentDeleteDialog({ open: true, id, name });
   };
 
   const handlePermanentDelete = async () => {
     try {
       await serviceTypesApi.permanentDelete(permanentDeleteDialog.id);
-      notify.success('Service type permanently deleted');
+      notify.success('Service permanently removed');
       setPermanentDeleteDialog({ open: false, id: null, name: '' });
       load();
     } catch (err) {
-      notify.error(err.response?.data?.message || 'Failed to delete');
+      notify.error('Failed to delete');
     }
   };
 
   const formatPrice = (price) => {
-    if (price === undefined || price === null) return '0.00';
-    const num = typeof price === 'number' ? price : parseFloat(price);
-    return isNaN(num) ? '0.00' : num.toFixed(2);
+    const num = parseFloat(price);
+    return isNaN(num) ? '0.00' : num.toLocaleString('en-PH', { minimumFractionDigits: 2 });
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading && types.length === 0) return <LoadingSpinner />;
 
   return (
     <PageContainer
-      title="Service Types"
-      subtitle="Manage available services"
+      title="Service Catalog"
+      subtitle="Define and manage your professional service offerings"
       actions={
-        <div className="flex gap-2">
-          <div className="flex gap-1 items-center border rounded-md overflow-hidden">
-            <button
-              onClick={() => setActiveFilter(true)}
-              className={`px-3 py-1 text-sm font-medium transition-colors ${activeFilter ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-muted'}`}
-            >
-              Active
-            </button>
-            <button
-              onClick={() => setActiveFilter(false)}
-              className={`px-3 py-1 text-sm font-medium transition-colors ${!activeFilter ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-muted'}`}
-            >
-              Disabled
-            </button>
-          </div>
-          <Button onClick={openCreate} className="bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4 mr-2" />Add Service Type
-          </Button>
-        </div>
+        <Button onClick={openCreate} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 rounded-xl px-6 active:scale-95 transition-all">
+          <Plus className="w-4 h-4 mr-2" />
+          <span className="hidden sm:inline">Add Service Type</span>
+          <span className="sm:hidden">Add</span>
+        </Button>
       }
     >
-      {types.length === 0 ? (
-        <EmptyState icon={Cog} title={`No ${activeFilter ? 'active' : 'disabled'} service types`} description={activeFilter ? 'Create your first service type' : 'Deactivated services will appear here'} />
+      {/* --- Search & Filter Toolbar --- */}
+      <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
+        {/* Status Switcher (Segmented Control) */}
+        <div className="flex p-1 bg-slate-100 rounded-2xl w-full md:w-auto">
+          <button
+            onClick={() => setActiveFilter(true)}
+            className={cn(
+              "flex-1 md:flex-none px-6 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all",
+              activeFilter ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
+            )}
+          >
+            Active
+          </button>
+          <button
+            onClick={() => setActiveFilter(false)}
+            className={cn(
+              "flex-1 md:flex-none px-6 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all",
+              !activeFilter ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
+            )}
+          >
+            Disabled
+          </button>
+        </div>
+
+        {/* Search Input */}
+        <div className="relative w-full md:max-w-xs group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+          <Input 
+            placeholder="Search services..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 rounded-2xl border-slate-200 focus:ring-primary/20 transition-all"
+          />
+        </div>
+      </div>
+
+      {filteredTypes.length === 0 ? (
+        <EmptyState 
+          icon={Cog} 
+          title={`No ${activeFilter ? 'active' : 'disabled'} services found`} 
+          description={searchQuery ? "Try adjusting your search terms." : "Start by creating a new service category."} 
+        />
       ) : (
-        <>
-          {/* Mobile card view */}
-          <div className="space-y-3 md:hidden">
-            {types.map((st) => (
-              <Card key={st.id}>
-                <CardContent className="p-4 flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-semibold">{st.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{st.description}</p>
-                    <p className="text-sm mt-1">₱{formatPrice(st.basePrice)} · {st.durationMinutes} min</p>
+        <div className="space-y-4">
+          {/* --- Mobile View: Service Cards --- */}
+          <div className="grid grid-cols-1 gap-3 md:hidden">
+            {paginatedData.map((st) => (
+              <Card key={st.id} className="rounded-2xl border-slate-100 overflow-hidden active:scale-[0.98] transition-transform">
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div className="min-w-0">
+                      <h3 className="font-black text-slate-800 truncate">{st.name}</h3>
+                      <p className="text-xs text-slate-500 line-clamp-1">{st.description}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(st)} className="h-8 w-8 rounded-lg text-slate-400">
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      {activeFilter ? (
+                        <Button variant="ghost" size="icon" onClick={() => setDeactivateDialog({ open: true, id: st.id, name: st.name })} className="h-8 w-8 rounded-lg text-orange-400">
+                          <PowerOff className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" size="icon" onClick={() => setPermanentDeleteDialog({ open: true, id: st.id, name: st.name })} className="h-8 w-8 rounded-lg text-red-400">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(st)}>
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    {activeFilter ? (
-                      <Button variant="ghost" size="icon" onClick={() => confirmDeactivate(st.id, st.name)} className="text-orange-500">
-                        <PowerOff className="w-4 h-4" />
-                      </Button>
-                    ) : (
-                      <Button variant="ghost" size="icon" onClick={() => confirmPermanentDelete(st.id, st.name)} className="text-red-500">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
+                  <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded-lg">
+                      <Tag className="w-3 h-3 text-primary" />
+                      ₱{formatPrice(st.basePrice)}
+                    </div>
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded-lg">
+                      <Clock className="w-3 h-3 text-primary" />
+                      {st.durationMinutes} min
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Desktop table */}
-          <Card className="hidden md:block">
-            <CardContent className="p-0 overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Base Price</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead className="w-28">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {types.map((st) => (
-                    <TableRow key={st.id}>
-                      <TableCell className="font-semibold">{st.name}</TableCell>
-                      <TableCell className="text-muted-foreground max-w-xs truncate">{st.description}</TableCell>
-                      <TableCell>₱{formatPrice(st.basePrice)}</TableCell>
-                      <TableCell>{st.durationMinutes} min</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(st)}>
-                            <Pencil className="w-4 h-4" />
+          {/* --- Desktop View: Data Table --- */}
+          <Card className="hidden md:block rounded-[2rem] border-slate-100 overflow-hidden shadow-sm">
+            <Table>
+              <TableHeader className="bg-slate-50/50">
+                <TableRow className="hover:bg-transparent border-slate-100">
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-8">Service Detail</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pricing</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Duration</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-right pr-8">Management</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedData.map((st) => (
+                  <TableRow key={st.id} className="group hover:bg-slate-50/50 transition-colors border-slate-50">
+                    <TableCell className="py-4 pl-8">
+                      <div>
+                        <p className="font-black text-slate-800 text-sm">{st.name}</p>
+                        <p className="text-xs text-slate-400 max-w-xs truncate">{st.description || 'No description provided'}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/5 text-primary text-xs font-black">
+                        ₱{formatPrice(st.basePrice)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                        <Clock className="w-3.5 h-3.5 text-slate-300" />
+                        {st.durationMinutes} minutes
+                      </div>
+                    </TableCell>
+                    <TableCell className="pr-8">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(st)} className="h-9 w-9 rounded-xl hover:bg-white hover:shadow-sm text-slate-400 hover:text-primary transition-all">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        {activeFilter ? (
+                          <Button variant="ghost" size="icon" onClick={() => setDeactivateDialog({ open: true, id: st.id, name: st.name })} className="h-9 w-9 rounded-xl hover:bg-orange-50 text-orange-400 transition-all">
+                            <PowerOff className="w-4 h-4" />
                           </Button>
-                          {activeFilter ? (
-                            <Button variant="ghost" size="icon" onClick={() => confirmDeactivate(st.id, st.name)} className="text-orange-500 hover:text-orange-700">
-                              <PowerOff className="w-4 h-4" />
-                            </Button>
-                          ) : (
-                            <Button variant="ghost" size="icon" onClick={() => confirmPermanentDelete(st.id, st.name)} className="text-red-500 hover:text-red-700">
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
+                        ) : (
+                          <Button variant="ghost" size="icon" onClick={() => setPermanentDeleteDialog({ open: true, id: st.id, name: st.name })} className="h-9 w-9 rounded-xl hover:bg-red-50 text-red-400 transition-all">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </Card>
-        </>
+
+          {/* --- Material Pagination Footer --- */}
+          <div className="flex items-center justify-between px-2 pt-2">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              Showing {paginatedData.length} of {filteredTypes.length} Services
+            </p>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+                className="h-8 rounded-xl border-slate-200 text-slate-600 disabled:opacity-30"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={cn(
+                      "w-8 h-8 rounded-xl text-[10px] font-black transition-all",
+                      currentPage === i + 1 ? "bg-primary text-white" : "text-slate-400 hover:bg-slate-100"
+                    )}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="h-8 rounded-xl border-slate-200 text-slate-600 disabled:opacity-30"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
+      {/* --- Action Modals & Dialogs --- */}
       <DataModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        title={editing ? 'Edit Service Type' : 'Add Service Type'}
+        title={editing ? 'Edit Service Details' : 'New Service Type'}
         onSubmit={handleSave}
         isLoading={saving}
       >
-        <div className="space-y-2">
-          <Label>Name</Label>
-          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Oil Change" />
-        </div>
-        <div className="space-y-2">
-          <Label>Description</Label>
-          <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Service description" />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-6 max-h-[70vh] overflow-y-auto px-2 pb-2 custom-scrollbar">
           <div className="space-y-2">
-            <Label>Base Price (₱)</Label>
-            <Input type="number" step="0.01" value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: e.target.value })} placeholder="50.00" />
+            <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Service Name</Label>
+            <Input 
+              value={form.name} 
+              onChange={(e) => setForm({ ...form, name: e.target.value })} 
+              placeholder="e.g. Executive Oil Change"
+              className="rounded-xl border-slate-200"
+            />
           </div>
           <div className="space-y-2">
-            <Label>Duration (minutes)</Label>
-            <Input type="number" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} placeholder="30" />
+            <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Description</Label>
+            <Textarea 
+              value={form.description} 
+              onChange={(e) => setForm({ ...form, description: e.target.value })} 
+              placeholder="Detail the inclusions of this service..."
+              className="rounded-xl border-slate-200 min-h-[100px] resize-none"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Base Price (₱)</Label>
+              <Input 
+                type="number" 
+                step="0.01" 
+                value={form.basePrice} 
+                onChange={(e) => setForm({ ...form, basePrice: e.target.value })} 
+                placeholder="0.00"
+                className="rounded-xl border-slate-200"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Duration (Mins)</Label>
+              <Input 
+                type="number" 
+                value={form.durationMinutes} 
+                onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} 
+                placeholder="30"
+                className="rounded-xl border-slate-200"
+              />
+            </div>
           </div>
         </div>
       </DataModal>
 
+      {/* --- Confirmation Dialogs --- */}
       <ConfirmationDialog
         open={deactivateDialog.open}
         onOpenChange={(open) => setDeactivateDialog({ ...deactivateDialog, open })}
-        title="Deactivate Service Type"
-        description={`Are you sure you want to deactivate "${deactivateDialog.name}"? It will be hidden from customer booking.`}
+        title="Confirm Deactivation"
+        description={`This will hide "${deactivateDialog.name}" from the customer booking portal. You can reactivate it later.`}
         onConfirm={handleDeactivate}
-        confirmText="Deactivate"
+        confirmText="Deactivate Service"
         variant="default"
       />
 
       <ConfirmationDialog
         open={permanentDeleteDialog.open}
         onOpenChange={(open) => setPermanentDeleteDialog({ ...permanentDeleteDialog, open })}
-        title="Permanently Delete Service Type"
-        description={`Are you sure you want to permanently delete "${permanentDeleteDialog.name}"? This action cannot be undone.`}
+        title="Permanent Removal"
+        description={`Are you sure you want to delete "${permanentDeleteDialog.name}"? All associated history for this specific service type configuration will be lost.`}
         onConfirm={handlePermanentDelete}
         confirmText="Delete Permanently"
         variant="destructive"

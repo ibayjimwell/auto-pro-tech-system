@@ -1,15 +1,19 @@
 import React from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-// Helper to get badge color based on appointment count (optional – keeps original logic but style matches theme)
-const getCountBadgeClass = (count) => {
-  if (count === 0) return '';
-  if (count <= 2) return 'bg-red-500 text-white';
-  if (count <= 4) return 'bg-amber-500 text-white';
-  return 'bg-red-700 text-white';
+/**
+ * Material-style Capacity Badge logic
+ * Matches the shop's load intensity with visual urgency
+ */
+const getCountBadgeClass = (count, isSelected) => {
+  if (count === 0) return 'hidden';
+  if (isSelected) return 'bg-white text-primary shadow-sm';
+  if (count <= 2) return 'bg-slate-100 text-slate-600 border border-slate-200';
+  if (count <= 4) return 'bg-amber-100 text-amber-700 border border-amber-200';
+  return 'bg-red-100 text-red-600 border border-red-200 animate-pulse-subtle';
 };
 
 export default function AppointmentCalendar({ currentMonth, onMonthChange, appointments, selectedDate, onDateClick }) {
@@ -18,7 +22,7 @@ export default function AppointmentCalendar({ currentMonth, onMonthChange, appoi
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const startOffset = monthStart.getDay(); // 0 = Sunday
 
-  // Count appointments per day (exclude cancelled)
+  // Mapping appointment counts (ignoring cancelled status)
   const countMap = {};
   appointments.forEach(apt => {
     if (apt.status !== 'CANCELLED') {
@@ -30,49 +34,62 @@ export default function AppointmentCalendar({ currentMonth, onMonthChange, appoi
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <div className="bg-card rounded-xl border border-border shadow-sm p-4 md:p-6 w-full">
-      {/* Header with month navigation */}
-      <div className="flex items-center justify-between mb-6">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onMonthChange(-1)}
-          className="hover:bg-primary/10 hover:text-primary"
-          aria-label="Previous month"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </Button>
-        <h2 className="text-xl font-semibold text-primary">
-          {format(currentMonth, 'MMMM yyyy')}
-        </h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onMonthChange(1)}
-          className="hover:bg-primary/10 hover:text-primary"
-          aria-label="Next month"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </Button>
+    /* --- Main Calendar Shell --- */
+    <div className="bg-white rounded-[2rem] p-5 md:p-8 w-full transition-all duration-300">
+      
+      {/* --- Header Section --- */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <CalendarIcon className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-none">
+              {format(currentMonth, 'MMMM')}
+            </h2>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">
+              {format(currentMonth, 'yyyy')} Schedule
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onMonthChange(-1)}
+            className="h-9 w-9 rounded-xl hover:bg-white hover:shadow-sm text-slate-500 active:scale-90 transition-all"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onMonthChange(1)}
+            className="h-9 w-9 rounded-xl hover:bg-white hover:shadow-sm text-slate-500 active:scale-90 transition-all"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
 
-      {/* Weekday headers */}
-      <div className="grid grid-cols-7 gap-1 md:gap-2 mb-3">
+      {/* --- Weekday Column Labels --- */}
+      <div className="grid grid-cols-7 gap-2 mb-4">
         {weekdays.map(day => (
           <div
             key={day}
-            className="text-center text-xs md:text-sm font-semibold text-muted-foreground uppercase tracking-wider"
+            className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest"
           >
-            {day.slice(0, 3)}
+            {day}
           </div>
         ))}
       </div>
 
-      {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1 md:gap-2">
-        {/* Empty cells for offset */}
+      {/* --- Date Grid --- */}
+      <div className="grid grid-cols-7 gap-2 md:gap-3">
+        {/* Padding for month start alignment */}
         {Array.from({ length: startOffset }).map((_, i) => (
-          <div key={`empty-${i}`} className="aspect-square" />
+          <div key={`empty-${i}`} className="aspect-square opacity-0 pointer-events-none" />
         ))}
 
         {daysInMonth.map(day => {
@@ -80,52 +97,67 @@ export default function AppointmentCalendar({ currentMonth, onMonthChange, appoi
           const count = countMap[dateKey] || 0;
           const isSelected = selectedDate && isSameDay(day, selectedDate);
           const isCurrentMonth = isSameMonth(day, currentMonth);
+          const isToday = isSameDay(day, new Date());
 
           return (
             <button
               key={dateKey}
               onClick={() => onDateClick(day)}
               className={cn(
-                "relative group aspect-square rounded-lg transition-all duration-200",
-                "flex flex-col items-center justify-center gap-0.5",
-                "hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/50",
-                !isCurrentMonth && "opacity-40",
-                isSelected && "bg-primary text-white shadow-md hover:bg-primary/90"
+                "relative group aspect-square rounded-[1.25rem] transition-all duration-300",
+                "flex flex-col items-center justify-center border-2",
+                "active:scale-95",
+                !isCurrentMonth && "opacity-20",
+                isSelected 
+                  ? "bg-primary border-primary text-white shadow-xl shadow-primary/30 z-10 scale-105" 
+                  : "bg-white border-transparent hover:bg-slate-50 hover:border-slate-100"
               )}
             >
+              {/* Today's Indicator Dot */}
+              {isToday && !isSelected && (
+                <span className="absolute top-2 w-1 h-1 bg-primary rounded-full" />
+              )}
+
+              {/* Day Number */}
               <span className={cn(
-                "text-sm md:text-base font-medium",
-                isSelected ? "text-white" : "text-foreground"
+                "text-sm md:text-lg font-black tracking-tighter transition-colors",
+                isSelected ? "text-white" : "text-slate-800"
               )}>
                 {format(day, 'd')}
               </span>
-              {count > 0 && (
-                <div className={cn(
-                  "text-xs w-5 h-5 rounded-full flex items-center justify-center font-semibold",
-                  getCountBadgeClass(count),
-                  isSelected && "bg-white text-primary"
-                )}>
-                  {count}
-                </div>
-              )}
+
+              {/* Intensity/Count Badge */}
+              <div className={cn(
+                "absolute -bottom-1 -right-1 text-[9px] w-5 h-5 rounded-lg flex items-center justify-center font-black",
+                getCountBadgeClass(count, isSelected)
+              )}>
+                {count}
+              </div>
             </button>
           );
         })}
       </div>
 
-      {/* Legend – small footer to explain badge colors (optional) */}
-      <div className="flex justify-center gap-4 mt-6 pt-3 border-t border-border text-xs text-muted-foreground">
-        <div className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full bg-red-500" />
-          <span>1‑2 bookings</span>
+      {/* --- Footer Legend --- */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mt-10 pt-6 border-t border-slate-100">
+        <div className="flex items-center gap-2 text-slate-400">
+          <Info className="w-3.5 h-3.5" />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Shop Load Intensity</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full bg-amber-500" />
-          <span>3‑4 bookings</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full bg-red-700" />
-          <span>5+ bookings</span>
+        
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-slate-200" />
+            <span className="text-[10px] font-bold text-slate-500 uppercase">Available</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
+            <span className="text-[10px] font-bold text-slate-500 uppercase">Busy</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-slate-500 uppercase">Peak</span>
+          </div>
         </div>
       </div>
     </div>

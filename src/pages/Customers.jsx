@@ -8,7 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Users, Pencil, Eye, Trash2, KeyRound } from 'lucide-react';
+import { 
+  Plus, Search, Users, Pencil, Eye, Trash2, 
+  ChevronLeft, ChevronRight, Mail, Phone, 
+  User, Lock, ShieldCheck, Filter, MoreHorizontal
+} from 'lucide-react';
 import { customersApi } from '@/api/customersApi';
 import { notify } from '@/lib/notify';
 import CustomerDetail from '@/components/customers/CustomerDetail';
@@ -22,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { cn } from "@/lib/utils";
 
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
@@ -29,6 +34,12 @@ export default function Customers() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
+  const [focusField, setFocusField] = useState(null); // For icon highlighting
+  
+  // Pagination State for DataTable functionality
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const [form, setForm] = useState({
     fullName: '',
     email: '',
@@ -41,9 +52,9 @@ export default function Customers() {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, name: '' });
 
   const loadCustomers = async () => {
+    setLoading(true);
     try {
       const res = await customersApi.list(search);
-      // Backend returns { success: true, data: [...] }
       const customersArray = res.data?.data || [];
       setCustomers(customersArray);
     } catch (error) {
@@ -57,6 +68,10 @@ export default function Customers() {
     loadCustomers();
   }, [search]);
 
+  // Pagination Logic
+  const totalPages = Math.ceil(customers.length / itemsPerPage);
+  const currentData = customers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   const openCreate = () => {
     setEditingCustomer(null);
     setForm({ fullName: '', email: '', phone: '', password: '', confirmPassword: '' });
@@ -69,14 +84,13 @@ export default function Customers() {
       fullName: c.fullName || '',
       email: c.email || '',
       phone: c.phone || '',
-      password: '',        // password field appears but optional
+      password: '',
       confirmPassword: '',
     });
     setModalOpen(true);
   };
 
   const handleSave = async () => {
-    // Validation
     if (!form.fullName || !form.email || !form.phone) {
       notify.error('Full name, email, and phone are required');
       return;
@@ -92,25 +106,20 @@ export default function Customers() {
 
     setSaving(true);
     try {
-      const payload = {
-        fullName: form.fullName,
-        email: form.email,
-        phone: form.phone,
-      };
+      const payload = { fullName: form.fullName, email: form.email, phone: form.phone };
       if (!editingCustomer) {
         payload.password = form.password;
         await customersApi.create(payload);
-        notify.success('Customer created');
+        notify.success('Walk-in Customer Registered');
       } else {
         if (form.password) payload.password = form.password;
         await customersApi.update(editingCustomer.id, payload);
-        notify.success('Customer updated');
+        notify.success('Customer Profile Updated');
       }
       setModalOpen(false);
       loadCustomers();
     } catch (err) {
-      const msg = err.response?.data?.message || 'Error saving customer';
-      notify.error(msg);
+      notify.error(err.response?.data?.message || 'Error saving customer');
     }
     setSaving(false);
   };
@@ -118,7 +127,7 @@ export default function Customers() {
   const handleDelete = async () => {
     try {
       await customersApi.delete(deleteDialog.id);
-      notify.success('Customer deleted');
+      notify.success('Customer removed');
       setDeleteDialog({ open: false, id: null, name: '' });
       loadCustomers();
     } catch (err) {
@@ -138,22 +147,38 @@ export default function Customers() {
   return (
     <PageContainer
       title="Customers"
-      subtitle="Manage your customer base"
+      subtitle="Manage and track your customer base"
       actions={
-        <Button onClick={openCreate} className="bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4 mr-2" />Add Customer
+        /* --- Redesigned "Walk In" Button --- */
+        <Button onClick={openCreate} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 h-11 px-6 rounded-xl font-bold transition-all active:scale-95">
+          <Plus className="w-5 h-5 mr-2" />Walk In
         </Button>
       }
     >
-      {/* Search */}
-      <div className="relative mb-6 max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by name, email, or phone..."
-          className="pl-10"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      {/* --- Filter & Search Bar Section --- */}
+      <div className="flex flex-col md:flex-row gap-4 mb-8 items-center justify-between animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="relative w-full max-w-lg">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-200">
+            <Search className={cn("w-5 h-5", focusField === 'search' ? "text-primary" : "text-muted-foreground")} />
+          </div>
+          <Input
+            placeholder="Search by name, email, or phone..."
+            className="pl-12 h-12 bg-white border-slate-200 rounded-2xl shadow-sm focus:ring-primary focus:border-primary transition-all text-base"
+            value={search}
+            onFocus={() => setFocusField('search')}
+            onBlur={() => setFocusField(null)}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        
+        <div className="flex items-center gap-2 w-full md:w-auto">
+           <Button variant="outline" className="h-12 rounded-2xl border-slate-200 flex-1 md:flex-none">
+             <Filter className="w-4 h-4 mr-2" /> Filters
+           </Button>
+           <p className="hidden md:block text-sm font-medium text-muted-foreground whitespace-nowrap">
+             Showing {currentData.length} of {customers.length} records
+           </p>
+        </div>
       </div>
 
       {loading ? (
@@ -161,180 +186,258 @@ export default function Customers() {
       ) : customers.length === 0 ? (
         <EmptyState icon={Users} title="No customers found" description="Add your first customer to get started" />
       ) : (
-        <>
-          {/* Mobile card view */}
-          <div className="space-y-3 md:hidden">
-            {customers.map((c) => (
-              <Card key={c.id} className="overflow-hidden">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0">
-                      <p className="font-semibold truncate">{c.fullName}</p>
-                      <p className="text-xs text-muted-foreground truncate">{c.email}</p>
-                      <p className="text-xs text-muted-foreground">{c.phone}</p>
+        <div className="animate-in fade-in duration-700">
+          {/* --- Mobile View: Modern Cards --- */}
+          <div className="grid grid-cols-1 gap-4 md:hidden">
+            {currentData.map((c) => (
+              <Card key={c.id} className="border-none shadow-md rounded-2xl bg-white overflow-hidden active:scale-[0.98] transition-transform">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex gap-4">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-primary font-bold border border-slate-200">
+                        {c.fullName.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-lg text-slate-900 truncate">{c.fullName}</p>
+                        <div className="flex flex-col gap-1 mt-1">
+                          <span className="flex items-center text-xs text-muted-foreground">
+                            <Mail className="w-3 h-3 mr-1" /> {c.email}
+                          </span>
+                          <span className="flex items-center text-xs text-muted-foreground">
+                            <Phone className="w-3 h-3 mr-1" /> {c.phone}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                      <Button variant="ghost" size="icon" onClick={() => setSelectedCustomer(c)} title="View details">
-                        <Eye className="w-4 h-4" />
+                  </div>
+                  <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-slate-50">
+                      <Button variant="secondary" size="sm" onClick={() => setSelectedCustomer(c)} className="rounded-lg font-bold">
+                        <Eye className="w-4 h-4 mr-2" /> View
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(c)} title="Edit">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(c)} className="rounded-lg text-slate-600">
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => confirmDelete(c.id, c.fullName)} title="Delete">
-                        <Trash2 className="w-4 h-4 text-destructive" />
+                      <Button variant="ghost" size="icon" onClick={() => confirmDelete(c.id, c.fullName)} className="rounded-lg text-destructive hover:bg-destructive/10">
+                        <Trash2 className="w-4 h-4" />
                       </Button>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Desktop table view */}
-          <Card className="hidden md:block">
-            <CardContent className="p-0 overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead className="w-32">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {customers.map((c) => (
-                    <TableRow key={c.id}>
-                      <TableCell className="font-semibold">{c.fullName}</TableCell>
-                      <TableCell className="text-muted-foreground">{c.email}</TableCell>
-                      <TableCell className="text-muted-foreground">{c.phone}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => setSelectedCustomer(c)} title="View">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(c)} title="Edit">
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => confirmDelete(c.id, c.fullName)} title="Delete">
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
+          {/* --- Desktop View: Modern DataTable --- */}
+          <div className="hidden md:block bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <Table>
+              <TableHeader className="bg-slate-50/50">
+                <TableRow className="border-slate-100 hover:bg-transparent">
+                  <TableHead className="py-5 px-6 font-bold text-slate-700">Customer Identity</TableHead>
+                  <TableHead className="py-5 px-6 font-bold text-slate-700">Contact Details</TableHead>
+                  <TableHead className="py-5 px-6 font-bold text-slate-700">Registration Phone</TableHead>
+                  <TableHead className="py-5 px-6 font-bold text-slate-700 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentData.map((c) => (
+                  <TableRow key={c.id} className="group border-slate-50 transition-colors hover:bg-slate-50/40">
+                    <TableCell className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold transition-colors group-hover:bg-primary group-hover:text-white">
+                          {c.fullName.charAt(0)}
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </>
+                        <span className="font-bold text-slate-800">{c.fullName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4 px-6">
+                      <div className="flex items-center text-slate-500">
+                        <Mail className="w-3.5 h-3.5 mr-2" />
+                        {c.email}
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4 px-6">
+                      <div className="flex items-center text-slate-500">
+                        <Phone className="w-3.5 h-3.5 mr-2" />
+                        {c.phone}
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4 px-6 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" onClick={() => setSelectedCustomer(c)} className="rounded-lg hover:bg-primary/10 hover:text-primary">
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(c)} className="rounded-lg">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => confirmDelete(c.id, c.fullName)} className="rounded-lg text-destructive hover:bg-destructive/10">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {/* --- Advanced Pagination Footer --- */}
+            <div className="p-6 border-t border-slate-50 flex items-center justify-between bg-slate-50/30">
+               <span className="text-sm text-muted-foreground font-medium">
+                 Page {currentPage} of {totalPages}
+               </span>
+               <div className="flex items-center gap-2">
+                 <Button 
+                   variant="outline" 
+                   size="sm" 
+                   disabled={currentPage === 1}
+                   onClick={() => setCurrentPage(p => p - 1)}
+                   className="rounded-xl h-10 border-slate-200"
+                 >
+                   <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                 </Button>
+                 <div className="flex gap-1">
+                   {[...Array(totalPages)].map((_, i) => (
+                     <Button 
+                       key={i} 
+                       size="sm"
+                       variant={currentPage === i + 1 ? "default" : "ghost"}
+                       onClick={() => setCurrentPage(i + 1)}
+                       className={cn("w-10 h-10 rounded-xl", currentPage === i + 1 ? "shadow-md" : "")}
+                     >
+                       {i + 1}
+                     </Button>
+                   ))}
+                 </div>
+                 <Button 
+                   variant="outline" 
+                   size="sm" 
+                   disabled={currentPage === totalPages}
+                   onClick={() => setCurrentPage(p => p + 1)}
+                   className="rounded-xl h-10 border-slate-200"
+                 >
+                   Next <ChevronRight className="w-4 h-4 ml-1" />
+                 </Button>
+               </div>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* --- Rebuilt Create/Edit Modal with Focus Icons --- */}
       <DataModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        title={editingCustomer ? 'Edit Customer' : 'Add Customer'}
+        title={editingCustomer ? 'Update Profile' : 'New Walk-in Customer'}
         onSubmit={handleSave}
         isLoading={saving}
       >
-        <div className="space-y-4">
+        <div className="space-y-6 pt-4 px-2">
           <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name</Label>
-            <Input
-              id="fullName"
-              value={form.fullName}
-              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-              placeholder="John Doe"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="john@example.com"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              placeholder="+63 912 345 6789"
-            />
+            <Label className="text-sm font-bold text-slate-700">Full Name</Label>
+            <div className="relative group">
+              <User className={cn("absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors", focusField === 'name' ? "text-primary" : "text-slate-400")} />
+              <Input
+                id="fullName"
+                value={form.fullName}
+                onFocus={() => setFocusField('name')}
+                onBlur={() => setFocusField(null)}
+                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                className="pl-10 h-12 rounded-xl bg-slate-50 border-slate-200 focus:bg-white"
+                placeholder="Ex: John Smith"
+              />
+            </div>
           </div>
 
-          {!editingCustomer && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-bold text-slate-700">Email Address</Label>
+              <div className="relative group">
+                <Mail className={cn("absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors", focusField === 'email' ? "text-primary" : "text-slate-400")} />
+                <Input
+                  id="email"
+                  type="email"
+                  value={form.email}
+                  onFocus={() => setFocusField('email')}
+                  onBlur={() => setFocusField(null)}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="pl-10 h-12 rounded-xl bg-slate-50 border-slate-200 focus:bg-white"
+                  placeholder="name@email.com"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-bold text-slate-700">Phone Number</Label>
+              <div className="relative group">
+                <Phone className={cn("absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors", focusField === 'phone' ? "text-primary" : "text-slate-400")} />
+                <Input
+                  id="phone"
+                  value={form.phone}
+                  onFocus={() => setFocusField('phone')}
+                  onBlur={() => setFocusField(null)}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className="pl-10 h-12 rounded-xl bg-slate-50 border-slate-200 focus:bg-white"
+                  placeholder="+63 9xx xxx xxxx"
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator className="bg-slate-100" />
+
+          {/* Password Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-bold text-slate-700">
+                {editingCustomer ? 'New Password (Optional)' : 'Security Password'}
+              </Label>
+              <div className="relative group">
+                <Lock className={cn("absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors", focusField === 'pass' ? "text-primary" : "text-slate-400")} />
                 <Input
                   id="password"
                   type="password"
                   value={form.password}
+                  onFocus={() => setFocusField('pass')}
+                  onBlur={() => setFocusField(null)}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="Create a password"
+                  className="pl-10 h-12 rounded-xl bg-slate-50 border-slate-200 focus:bg-white"
+                  placeholder="••••••••"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-bold text-slate-700">Confirm Security</Label>
+              <div className="relative group">
+                <ShieldCheck className={cn("absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors", focusField === 'confirm' ? "text-primary" : "text-slate-400")} />
                 <Input
                   id="confirmPassword"
                   type="password"
                   value={form.confirmPassword}
+                  onFocus={() => setFocusField('confirm')}
+                  onBlur={() => setFocusField(null)}
                   onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                  placeholder="Confirm password"
+                  className="pl-10 h-12 rounded-xl bg-slate-50 border-slate-200 focus:bg-white"
+                  placeholder="••••••••"
                 />
               </div>
-            </>
-          )}
-
-          {editingCustomer && (
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password (optional)</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="Leave blank to keep current"
-              />
-              {form.password && (
-                <div className="space-y-2 mt-2">
-                  <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
-                  <Input
-                    id="confirmNewPassword"
-                    type="password"
-                    value={form.confirmPassword}
-                    onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                    placeholder="Confirm new password"
-                  />
-                </div>
-              )}
             </div>
-          )}
+          </div>
         </div>
       </DataModal>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-3xl p-8 border-none shadow-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Customer</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete <strong>{deleteDialog.name}</strong>? This action cannot be undone.
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4 mx-auto md:mx-0">
+               <Trash2 className="w-8 h-8 text-destructive" />
+            </div>
+            <AlertDialogTitle className="text-2xl font-black text-slate-900">Confirm Removal</AlertDialogTitle>
+            <AlertDialogDescription className="text-base text-slate-600">
+              You are about to remove <strong>{deleteDialog.name}</strong> from the system. All associated data will be archived.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteDialog({ open: false, id: null, name: '' })}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="h-12 rounded-xl border-slate-200 font-bold px-6">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="h-12 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold px-6">
+              Confirm Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -342,3 +445,6 @@ export default function Customers() {
     </PageContainer>
   );
 }
+
+// Minimal Separator helper inside the component
+const Separator = ({ className }) => <div className={cn("h-[1px] w-full", className)} />;

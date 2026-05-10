@@ -18,7 +18,6 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import LoginPage from "@/components/auth/LoginPage";
 import Dashboard from "@/pages/Dashboard";
 import Customers from "@/pages/Customers";
-import Vehicles from "@/pages/Vehicles";
 import Appointments from "@/pages/Appointments";
 import ServiceTypes from "@/pages/ServiceTypes";
 import Staff from "@/pages/Staff";
@@ -80,14 +79,6 @@ function App() {
                 element={
                   <ProtectedRoute module="customers">
                     <Customers />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/vehicles"
-                element={
-                  <ProtectedRoute module="vehicles">
-                    <Vehicles />
                   </ProtectedRoute>
                 }
               />
