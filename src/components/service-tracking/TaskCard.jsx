@@ -27,8 +27,10 @@ const TaskCard = ({ task, onUpdate, onDelete, appointmentId, isInProgress = fals
 
   const handleMarkDone = () => {
     if (isInProgress) {
+      // In IN_PROGRESS, just confirm and mark done (no findings modal)
       setMarkDoneConfirmOpen(true);
     } else {
+      // In UNDER_INSPECTION, show findings modal first
       setFindingsModal(true);
     }
   };
@@ -103,16 +105,15 @@ const TaskCard = ({ task, onUpdate, onDelete, appointmentId, isInProgress = fals
         </CardContent>
       </Card>
 
-      {!isInProgress && (
-        <FindingsModal
-          open={findingsModal}
-          onClose={() => setFindingsModal(false)}
-          onSubmit={handleFindingsSubmit}
-          taskTitle={task.title}
-          taskId={task.id}
-          appointmentId={appointmentId}
-        />
-      )}
+      {/* Always show FindingsModal when marking DONE - both inspection and repair tasks need findings */}
+      <FindingsModal
+        open={findingsModal}
+        onClose={() => setFindingsModal(false)}
+        onSubmit={handleFindingsSubmit}
+        taskTitle={task.title}
+        taskId={task.id}
+        appointmentId={appointmentId}
+      />
 
       <ConfirmationDialog
         open={startDialogOpen}

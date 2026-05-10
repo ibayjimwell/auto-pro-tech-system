@@ -9,6 +9,7 @@ import { Calendar, Clock, User, Car, Wrench, Eye, Play } from 'lucide-react';
 import { appointmentsApi } from '@/api/appointmentsApi';
 import { notify } from '@/lib/notify';
 import ServiceDetailPanel from '@/components/service-tracking/ServiceDetailPanel';
+import { useAppointmentsSocket } from '@/hooks/useAppointmentsSocket';
 
 const formatTime12h = (time24) => {
   if (!time24) return '';
@@ -56,6 +57,22 @@ export default function ServiceTracking() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Real-time update listener - refreshes list when appointments change
+  useAppointmentsSocket(({ type, appointment }) => {
+    if (type === 'statusChanged' || type === 'created' || type === 'cancelled' || type === 'updated') {
+      const relevantStatuses = ['CONFIRMED', 'UNDER_INSPECTION', 'WAITING_FOR_APPROVAL', 'IN_PROGRESS'];
+      if (appointment && relevantStatuses.includes(appointment.status)) {
+        // If we're viewing a specific appointment in detail, let the ServiceDetailPanel handle it
+        if (!selected) {
+          load();
+        }
+      } else if (type === 'cancelled') {
+        // If an appointment was cancelled, remove it from the list
+        setAllAppointments(prev => prev.filter(a => a.id !== appointment?.id));
+      }
+    }
+  });
 
   useEffect(() => {
     setFilteredAppointments(allAppointments.filter(apt => apt.status === activeFilter));
