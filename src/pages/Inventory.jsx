@@ -1,429 +1,251 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PageContainer from '@/components/shared/PageContainer';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import DataModal from '@/components/shared/DataModal';
 import EmptyState from '@/components/shared/EmptyState';
+import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { inventoryStore } from '@/services/inventoryStore';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  Plus, 
+  Package, 
+  Pencil, 
+  Trash2, 
+  Search, 
+  ChevronLeft, 
+  ChevronRight,
+  AlertTriangle,
+  MinusCircle
+} from 'lucide-react';
+import { inventoryApi } from '@/api/inventoryApi';
 import { notify } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import {
-  Package, Plus, Search, AlertTriangle, RefreshCw,
-  Pencil, Trash2, RotateCcw, X, Check, Filter, Layers, Info
-} from 'lucide-react';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
-const CATEGORIES = ['All', 'Fluids', 'Filters', 'Brakes', 'Ignition', 'Electrical', 'Accessories'];
+const CATEGORIES = ['Engine', 'Brakes', 'Suspension', 'Electrical', 'Body', 'Interior', 'Fluids', 'Tools', 'Other'];
+const UNITS = ['pc', 'set', 'kg', 'liter', 'meter'];
 
-/**
- * StockBadge Component
- * Displays status with color-coded alerts for inventory levels.
- */
-function StockBadge({ item }) {
-  if (item.stockQty === 0) {
-    return (
-      <Badge variant="destructive" className="flex items-center gap-1 px-2 py-0.5 text-[10px] uppercase font-black tracking-wider">
-        Out of Stock
-      </Badge>
-    );
-  }
-  if (item.stockQty <= item.minThreshold) {
-    return (
-      <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none flex items-center gap-1 px-2 py-0.5 text-[10px] uppercase font-black tracking-wider">
-        <AlertTriangle className="w-3 h-3" /> Low Stock
-      </Badge>
-    );
-  }
-  return (
-    <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-none px-2 py-0.5 text-[10px] uppercase font-black tracking-wider">
-      Well Stocked
-    </Badge>
-  );
-}
-
-/**
- * ItemForm Component
- * Redesigned for better scannability and touch-friendly inputs.
- */
-function ItemForm({ item, onSave, onCancel }) {
-  const [form, setForm] = useState(item || {
-    name: '', sku: '', category: 'Fluids', unit: 'piece',
-    stockQty: 0, minThreshold: 5, costPrice: 0, sellPrice: 0
-  });
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  return (
-    <Card className="border-2 border-primary/10 shadow-xl animate-in fade-in zoom-in duration-200">
-      <CardHeader className="pb-4">
-        <CardTitle className="text-lg font-black flex items-center gap-2">
-          {item ? <Pencil className="w-5 h-5 text-primary" /> : <Plus className="w-5 h-5 text-primary" />}
-          {item ? 'Update Inventory Item' : 'Add New Part/Supply'}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* General Info */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Item Name *</label>
-            <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Brake Pads Front" className="h-10 text-sm font-medium focus-visible:ring-primary" />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">SKU / Part Number</label>
-            <Input value={form.sku} onChange={e => set('sku', e.target.value)} placeholder="BP-F-001" className="h-10 text-sm font-medium uppercase" />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Category</label>
-            <select value={form.category} onChange={e => set('category', e.target.value)} className="w-full h-10 text-sm rounded-lg border border-input bg-background px-3 py-1 font-medium focus:ring-2 focus:ring-primary outline-none appearance-none cursor-pointer">
-              {['Fluids', 'Filters', 'Brakes', 'Ignition', 'Electrical', 'Accessories', 'Other'].map(c => <option key={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Unit Type</label>
-            <select value={form.unit} onChange={e => set('unit', e.target.value)} className="w-full h-10 text-sm rounded-lg border border-input bg-background px-3 py-1 font-medium focus:ring-2 focus:ring-primary outline-none appearance-none cursor-pointer">
-              {['piece', 'set', 'bottle', 'liter', 'box', 'pair'].map(u => <option key={u}>{u}</option>)}
-            </select>
-          </div>
-
-          {/* Inventory Levels */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1 text-emerald-600">Current Stock</label>
-            <Input type="number" value={form.stockQty} onChange={e => set('stockQty', +e.target.value)} min={0} className="h-10 font-bold border-emerald-100 bg-emerald-50/30" />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1 text-amber-600">Low Stock Alert</label>
-            <Input type="number" value={form.minThreshold} onChange={e => set('minThreshold', +e.target.value)} min={0} className="h-10 font-bold border-amber-100 bg-amber-50/30" />
-          </div>
-
-          {/* Pricing */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Cost Price (₱)</label>
-            <Input type="number" value={form.costPrice} onChange={e => set('costPrice', +e.target.value)} min={0} className="h-10 font-bold" />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1 text-primary">Sell Price (₱)</label>
-            <Input type="number" value={form.sellPrice} onChange={e => set('sellPrice', +e.target.value)} min={0} className="h-10 font-bold border-primary/20 bg-primary/5" />
-          </div>
-        </div>
-
-        {/* Form Actions */}
-        <div className="flex gap-3 justify-end pt-4 border-t">
-          <Button variant="outline" size="lg" onClick={onCancel} className="rounded-xl h-11 px-6 font-bold uppercase tracking-wider text-xs">
-            Discard
-          </Button>
-          <Button size="lg" onClick={() => onSave(form)} disabled={!form.name.trim()} className="bg-primary hover:bg-primary/90 rounded-xl h-11 px-8 font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20">
-            <Check className="w-4 h-4 mr-2" /> {item ? 'Apply Changes' : 'Confirm Save'}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-/**
- * RestockModal Component
- * Compact, scrollable modal for quick inventory adjustments.
- */
-function RestockModal({ item, onRestock, onCancel }) {
-  const [qty, setQty] = useState(1);
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-      <Card className="w-full max-w-sm border-none shadow-2xl rounded-[2rem] overflow-hidden my-auto">
-        <div className="bg-primary p-6 text-white text-center space-y-2">
-          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center mx-auto">
-            <RotateCcw className="w-6 h-6 text-white" />
-          </div>
-          <h3 className="text-xl font-black uppercase tracking-tight">Restock Item</h3>
-          <p className="text-white/80 text-sm font-medium">{item.name}</p>
-        </div>
-        <CardContent className="p-8 space-y-6">
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border">
-            <div className="text-center flex-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase">Current</p>
-              <p className="text-lg font-black text-slate-700">{item.stockQty}</p>
-            </div>
-            <div className="w-px h-8 bg-slate-200" />
-            <div className="text-center flex-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase">New Total</p>
-              <p className="text-lg font-black text-primary">{item.stockQty + qty}</p>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Quantity to add</label>
-            <Input type="number" value={qty} onChange={e => setQty(+e.target.value)} min={1} className="h-12 text-center text-xl font-black rounded-2xl border-2 focus-visible:ring-primary" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Button onClick={() => onRestock(item.id, qty)} className="bg-primary hover:bg-primary/90 h-12 rounded-2xl font-black uppercase tracking-widest text-xs">
-              Apply Restock
-            </Button>
-            <Button variant="ghost" onClick={onCancel} className="h-12 font-bold text-slate-500 uppercase tracking-widest text-xs">
-              Cancel
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-/**
- * Main Inventory Component
- * Full-scale inventory dashboard with responsive layouts.
- */
-export default function Inventory() {
+export default function InventoryManagement() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('All');
-  const [showForm, setShowForm] = useState(false);
-  const [editItem, setEditItem] = useState(null);
-  const [restockItem, setRestockItem] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const data = await inventoryStore.list();
-    setItems(data);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const filtered = items.filter(item => {
-    const matchSearch = !search || item.name.toLowerCase().includes(search.toLowerCase()) || item.sku.toLowerCase().includes(search.toLowerCase());
-    const matchCat = category === 'All' || item.category === category;
-    return matchSearch && matchCat;
+  // Modal states
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: '',
+    sku: '',
+    category: '',
+    stockQty: 0,
+    minThreshold: 5,
+    unit: 'pc',
+    costPrice: '',
+    sellPrice: '',
   });
 
-  const lowStockCount = items.filter(i => i.stockQty <= i.minThreshold).length;
+  // Deduction dialog
+  const [deductDialog, setDeductDialog] = useState({ open: false, item: null, quantity: '' });
+  const [deducting, setDeducting] = useState(false);
 
-  const handleSave = async (data) => {
-    if (editItem) {
-      await inventoryStore.update(editItem.id, data);
-      notify.success('Item updated');
-    } else {
-      await inventoryStore.create(data);
-      notify.success('Item added to inventory');
+  const loadItems = useCallback(async () => {
+    try {
+      const res = await inventoryApi.list(search);
+      setItems(res.data?.data || []);
+    } catch (error) {
+      console.error(error);
+      setItems([]);
     }
-    setShowForm(false);
-    setEditItem(null);
-    load();
+    setLoading(false);
+  }, [search]);
+
+  useEffect(() => {
+    loadItems();
+    setCurrentPage(1);
+  }, [loadItems, search]);
+
+  // Pagination
+  const totalPages = Math.ceil(items.length / itemsPerPage);
+  const paginatedItems = items.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  // Form handlers
+  const openCreate = () => {
+    setEditing(null);
+    setForm({
+      name: '',
+      sku: '',
+      category: '',
+      stockQty: 0,
+      minThreshold: 5,
+      unit: 'pc',
+      costPrice: '',
+      sellPrice: '',
+    });
+    setModalOpen(true);
+  };
+
+  const openEdit = (item) => {
+    setEditing(item);
+    setForm({
+      name: item.name || '',
+      sku: item.sku || '',
+      category: item.category || '',
+      stockQty: item.stockQty ?? 0,
+      minThreshold: item.minThreshold ?? 5,
+      unit: item.unit || 'pc',
+      costPrice: item.costPrice?.toString() || '',
+      sellPrice: item.sellPrice?.toString() || '',
+    });
+    setModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.name || !form.sku || !form.sellPrice) {
+      notify.error('Name, SKU, and Sell Price are required');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        ...form,
+        stockQty: Number(form.stockQty),
+        minThreshold: Number(form.minThreshold),
+        costPrice: form.costPrice ? parseFloat(form.costPrice) : null,
+        sellPrice: parseFloat(form.sellPrice),
+      };
+      if (editing) {
+        await inventoryApi.update(editing.id, payload);
+        notify.success('Item updated');
+      } else {
+        await inventoryApi.create(payload);
+        notify.success('Item created');
+      }
+      setModalOpen(false);
+      loadItems();
+    } catch (err) {
+      notify.error(err.response?.data?.message || 'Failed to save item');
+    }
+    setSaving(false);
   };
 
   const handleDelete = async (id) => {
-    if(window.confirm('Delete this item permanently?')) {
-        await inventoryStore.delete(id);
-        notify.success('Item removed');
-        load();
+    if (window.confirm('Delete this item permanently?')) {
+      try {
+        await inventoryApi.delete(id);
+        notify.success('Item deleted');
+        loadItems();
+      } catch (err) {
+        notify.error('Delete failed');
+      }
     }
   };
 
-  const handleRestock = async (id, qty) => {
-    await inventoryStore.restock(id, qty);
-    notify.success(`Successfully restocked`);
-    setRestockItem(null);
-    load();
+  const openDeduct = (item) => {
+    setDeductDialog({ open: true, item, quantity: '' });
   };
 
-  const openEdit = (item) => { setEditItem(item); setShowForm(true); };
+  const handleDeduct = async () => {
+    const qty = parseInt(deductDialog.quantity);
+    if (isNaN(qty) || qty <= 0) {
+      notify.error('Enter a valid positive quantity');
+      return;
+    }
+    if (qty > deductDialog.item.stockQty) {
+      notify.error(`Only ${deductDialog.item.stockQty} units available`);
+      return;
+    }
+    setDeducting(true);
+    try {
+      const res = await inventoryApi.deductStock(deductDialog.item.id, qty);
+      notify.success(`Stock deducted: ${qty} used`);
+      if (res.data?.alert?.level === 'LOW_STOCK') {
+        notify.warning(`Low stock alert! Only ${res.data.alert.stockQty} left.`);
+      }
+      loadItems();
+      setDeductDialog({ open: false, item: null, quantity: '' });
+    } catch (err) {
+      notify.error(err.response?.data?.message || 'Stock deduction failed');
+    }
+    setDeducting(false);
+  };
+
+  if (loading && items.length === 0) return <LoadingSpinner />;
 
   return (
     <PageContainer
-      title="Parts Inventory"
-      subtitle="Manage and monitor workshop stock levels"
+      title="Inventory Management"
+      subtitle="Track parts, supplies, and stock levels"
       actions={
-        <Button onClick={() => { setEditItem(null); setShowForm(true); }} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 rounded-2xl px-6 h-11 font-black uppercase tracking-widest text-xs">
-          <Plus className="w-5 h-5 mr-2" /> Add Part
+        <Button onClick={openCreate} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 rounded-xl px-6">
+          <Plus className="w-4 h-4 mr-2" />
+          Add Item
         </Button>
       }
     >
-      {/* Low stock alert banner */}
-      {lowStockCount > 0 && (
-        <div className="flex items-center gap-4 bg-amber-50 border-2 border-amber-100 rounded-3xl px-6 py-4 mb-8 animate-pulse shadow-sm">
-          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-            <AlertTriangle className="w-6 h-6 text-amber-600" />
-          </div>
-          <div>
-            <p className="text-sm font-black text-amber-900 uppercase tracking-tight">Stock Warning</p>
-            <p className="text-xs font-medium text-amber-700/80">
-              {lowStockCount} items require immediate attention. Replenish stock to maintain service speed.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* --- Overlay Components --- */}
-      {showForm && (
-        <div className="mb-8">
-          <ItemForm
-            item={editItem}
-            onSave={handleSave}
-            onCancel={() => { setShowForm(false); setEditItem(null); }}
+      {/* Search Bar */}
+      <div className="flex flex-col md:flex-row gap-4 mb-8 items-center justify-between">
+        <div className="relative w-full md:max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Search by name, SKU, or category..."
+            className="pl-10 rounded-2xl border-slate-200"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-      )}
-
-      {restockItem && (
-        <RestockModal item={restockItem} onRestock={handleRestock} onCancel={() => setRestockItem(null)} />
-      )}
-
-      {/* --- Filter & Search Section --- */}
-      <div className="flex flex-col lg:flex-row gap-4 mb-8">
-        <div className="relative flex-1 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary transition-colors" />
-          <Input 
-            value={search} 
-            onChange={e => setSearch(e.target.value)} 
-            placeholder="Search parts by name, SKU, or keyword..." 
-            className="pl-12 h-14 rounded-3xl border-slate-200 bg-white text-base font-medium shadow-sm focus-visible:ring-2" 
-          />
-        </div>
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 lg:pb-0">
-          <div className="p-1 bg-slate-100/80 rounded-2xl flex gap-1 border border-slate-200/50">
-            {CATEGORIES.map(c => (
-              <button 
-                key={c} 
-                onClick={() => setCategory(c)}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                  category === c 
-                    ? "bg-white text-primary shadow-sm ring-1 ring-black/5" 
-                    : "text-slate-500 hover:text-slate-800 hover:bg-white/50"
-                )}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
+        <div className="hidden md:flex items-center gap-2 text-xs text-slate-400 bg-slate-50 px-4 py-2 rounded-full">
+          <Package className="w-3 h-3" />
+          {items.length} total items
         </div>
       </div>
 
-      {loading ? <LoadingSpinner /> : filtered.length === 0 ? (
-        <EmptyState icon={Package} title="No Inventory Matches" description="We couldn't find any items matching your criteria." />
+      {items.length === 0 ? (
+        <EmptyState icon={Package} title="No inventory items" description={search ? "Try a different search" : "Start by adding a new part or supply."} />
       ) : (
-        <div className="space-y-8">
-          {/* --- Summary Dashboard Stats --- */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <Card className="rounded-[2rem] border-none bg-primary/5 shadow-none overflow-hidden group">
-              <CardContent className="p-6 relative">
-                <Layers className="absolute -right-4 -bottom-4 w-24 h-24 text-primary/10 group-hover:scale-110 transition-transform" />
-                <p className="text-3xl font-black text-primary">{items.length}</p>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 mt-1">Total SKUs</p>
-              </CardContent>
-            </Card>
-            <Card className="rounded-[2rem] border-none bg-amber-50 shadow-none overflow-hidden group">
-              <CardContent className="p-6 relative">
-                <AlertTriangle className="absolute -right-4 -bottom-4 w-24 h-24 text-amber-500/10 group-hover:scale-110 transition-transform" />
-                <p className="text-3xl font-black text-amber-600">{lowStockCount}</p>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600/60 mt-1">Critical Stock</p>
-              </CardContent>
-            </Card>
-            <Card className="rounded-[2rem] border-none bg-emerald-50 shadow-none overflow-hidden group">
-              <CardContent className="p-6 relative">
-                <Check className="absolute -right-4 -bottom-4 w-24 h-24 text-emerald-500/10 group-hover:scale-110 transition-transform" />
-                <p className="text-3xl font-black text-emerald-700">{items.filter(i => i.stockQty > i.minThreshold).length}</p>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600/60 mt-1">Healthy Units</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* --- Desktop Information Table --- */}
-          <div className="hidden md:block rounded-[2.5rem] bg-white border border-slate-200 overflow-hidden shadow-sm">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Part Information</th>
-                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Inventory Level</th>
-                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Pricing</th>
-                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-                  <th className="px-8 py-5"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map(item => (
-                  <tr key={item.id} className="group hover:bg-slate-50/80 transition-colors">
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                            <Package className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="font-bold text-slate-800">{item.name}</p>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{item.sku} • {item.category}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                        <div className="flex items-center gap-2">
-                            <span className={cn("text-lg font-black", item.stockQty <= item.minThreshold ? "text-amber-600" : "text-slate-800")}>
-                                {item.stockQty}
-                            </span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.unit}s</span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 font-medium">Alert at: {item.minThreshold}</p>
-                    </td>
-                    <td className="px-6 py-5 text-right">
-                        <p className="text-sm font-bold text-slate-800">₱{item.sellPrice.toLocaleString()}</p>
-                        <p className="text-[10px] text-slate-400 font-medium tracking-tight">Cost: ₱{item.costPrice.toLocaleString()}</p>
-                    </td>
-                    <td className="px-8 py-5 text-center">
-                        <StockBadge item={item} />
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button size="sm" variant="outline" onClick={() => setRestockItem(item)} className="h-9 rounded-xl font-bold uppercase tracking-widest text-[10px] gap-2 border-slate-200">
-                          <RotateCcw className="w-3 h-3" /> Restock
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => openEdit(item)} className="h-9 w-9 rounded-xl hover:bg-white hover:shadow-sm">
-                          <Pencil className="w-4 h-4 text-slate-600" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(item.id)} className="h-9 w-9 rounded-xl text-destructive hover:bg-destructive/5">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* --- Mobile Card List --- */}
-          <div className="md:hidden space-y-4">
-            {filtered.map(item => (
-              <Card key={item.id} className="rounded-[2.5rem] border-slate-200 overflow-hidden shadow-sm">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
-                            <Package className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="font-black text-slate-800 uppercase text-sm leading-tight">{item.name}</p>
-                            <p className="text-[10px] font-black text-slate-400 tracking-wider uppercase">{item.category}</p>
-                        </div>
-                    </div>
-                    <StockBadge item={item} />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-3xl border border-slate-100 mb-6">
+        <div className="space-y-6">
+          {/* Mobile Cards */}
+          <div className="grid grid-cols-1 gap-4 md:hidden">
+            {paginatedItems.map((item) => (
+              <Card key={item.id} className="rounded-2xl border-slate-100 shadow-sm">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex justify-between items-start">
                     <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">In Stock</p>
-                        <p className="text-xl font-black text-slate-800">{item.stockQty} <span className="text-[10px] text-slate-400 font-bold">{item.unit}s</span></p>
+                      <p className="font-black text-slate-800">{item.name}</p>
+                      <p className="text-xs text-slate-400 font-mono">{item.sku}</p>
                     </div>
-                    <div className="text-right">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pricing</p>
-                        <p className="text-xl font-black text-primary">₱{item.sellPrice}</p>
-                    </div>
+                    <Badge className={cn(
+                      "rounded-full text-[10px] font-black",
+                      item.stockQty <= (item.minThreshold || 0) ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"
+                    )}>
+                      {item.stockQty} {item.unit}
+                    </Badge>
                   </div>
-
-                  <div className="flex gap-2">
-                    <Button onClick={() => setRestockItem(item)} className="h-12 bg-slate-900 flex-1 rounded-2xl font-black uppercase tracking-widest text-[10px] gap-2">
-                      <RotateCcw className="w-4 h-4" /> Quick Restock
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">{item.category || 'Uncategorized'}</span>
+                    <span className="font-bold text-primary">₱{Number(item.sellPrice).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2 border-t">
+                    <Button variant="ghost" size="sm" onClick={() => openDeduct(item)} className="h-8 text-amber-600">
+                      <MinusCircle className="w-4 h-4 mr-1" /> Use
                     </Button>
-                    <Button variant="outline" onClick={() => openEdit(item)} className="h-12 w-12 p-0 rounded-2xl border-slate-200 shadow-sm">
-                      <Pencil className="w-4 h-4 text-slate-600" />
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(item)} className="h-8">
+                      <Pencil className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" onClick={() => handleDelete(item.id)} className="h-12 w-12 p-0 rounded-2xl border-slate-200 text-destructive hover:bg-destructive/5">
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="h-8 text-red-500">
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -431,8 +253,168 @@ export default function Inventory() {
               </Card>
             ))}
           </div>
+
+          {/* Desktop Table */}
+          <Card className="hidden md:block rounded-2xl border-slate-100 overflow-hidden">
+            <Table>
+              <TableHeader className="bg-slate-50/50">
+                <TableRow>
+                  <TableHead className="pl-6">Item / SKU</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Stock</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead className="text-right">Sell Price</TableHead>
+                  <TableHead className="text-right pr-6">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedItems.map((item) => (
+                  <TableRow key={item.id} className="group">
+                    <TableCell className="pl-6">
+                      <div>
+                        <p className="font-bold text-slate-800">{item.name}</p>
+                        <code className="text-xs text-slate-400">{item.sku}</code>
+                      </div>
+                    </TableCell>
+                    <TableCell>{item.category || '—'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "font-mono font-bold",
+                          item.stockQty <= (item.minThreshold || 0) ? "text-red-500" : "text-green-600"
+                        )}>
+                          {item.stockQty}
+                        </span>
+                        {item.stockQty <= (item.minThreshold || 0) && (
+                          <AlertTriangle className="w-4 h-4 text-amber-500" />
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{item.unit}</TableCell>
+                    <TableCell className="text-right font-mono font-bold">
+                      ₱{Number(item.sellPrice).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="pr-6 text-right">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <Button variant="ghost" size="icon" onClick={() => openDeduct(item)} className="h-8 w-8 text-amber-600">
+                          <MinusCircle className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(item)} className="h-8 w-8">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="h-8 w-8 text-red-500">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between px-2">
+            <p className="text-xs text-slate-400">Page {currentPage} of {totalPages || 1}</p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(p => p + 1)}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Create/Edit Modal */}
+      <DataModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        title={editing ? 'Edit Inventory Item' : 'Add New Item'}
+        onSubmit={handleSave}
+        isLoading={saving}
+      >
+        <div className="space-y-4 px-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Item Name *</Label>
+              <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="e.g., Brake Pad Set" />
+            </div>
+            <div className="space-y-2">
+              <Label>SKU * (Unique)</Label>
+              <Input value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} placeholder="e.g., BP-FRONT-001" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
+                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Unit</Label>
+              <Select value={form.unit} onValueChange={v => setForm({...form, unit: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {UNITS.map(unit => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Stock Quantity</Label>
+              <Input type="number" value={form.stockQty} onChange={e => setForm({...form, stockQty: parseInt(e.target.value) || 0})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Min Threshold</Label>
+              <Input type="number" value={form.minThreshold} onChange={e => setForm({...form, minThreshold: parseInt(e.target.value) || 0})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Cost Price (₱)</Label>
+              <Input type="number" step="0.01" value={form.costPrice} onChange={e => setForm({...form, costPrice: e.target.value})} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Selling Price (₱) *</Label>
+            <Input type="number" step="0.01" value={form.sellPrice} onChange={e => setForm({...form, sellPrice: e.target.value})} />
+          </div>
+        </div>
+      </DataModal>
+
+      {/* Stock Deduction Dialog */}
+      <Dialog open={deductDialog.open} onOpenChange={(open) => setDeductDialog({ ...deductDialog, open })}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Use Stock Item</DialogTitle>
+            <DialogDescription>
+              Deduct inventory for <strong>{deductDialog.item?.name}</strong><br />
+              Available: {deductDialog.item?.stockQty} {deductDialog.item?.unit}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <Label>Quantity to use</Label>
+            <Input
+              type="number"
+              placeholder="Enter quantity"
+              value={deductDialog.quantity}
+              onChange={(e) => setDeductDialog({ ...deductDialog, quantity: e.target.value })}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeductDialog({ open: false, item: null, quantity: '' })}>Cancel</Button>
+            <Button onClick={handleDeduct} disabled={deducting} className="bg-amber-600 hover:bg-amber-700">
+              {deducting ? 'Processing...' : 'Confirm Use'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }

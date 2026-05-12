@@ -14,4 +14,6 @@ export const appointmentsApi = {
   getAvailableSlots: (date, serviceTypeId) =>
     apiClient.get(`/appointments/available-slots?date=${date}&serviceTypeId=${serviceTypeId}`),
   getCalendarView: (month) => apiClient.get(`/appointments/calendar?month=${month}`),
+  checkAvailability: (date, startTime, serviceTypeId) =>
+    apiClient.post('/appointments/check-availability', { date, startTime, serviceTypeId }),
 };

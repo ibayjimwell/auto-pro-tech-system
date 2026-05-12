@@ -91,11 +91,15 @@ export default function FindingsModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      {/* Container: Responsive width with max-height to ensure internal scrollability */}
+      {/* 
+        - max-h-[90vh] : modal won't exceed 90% of viewport height
+        - flex flex-col : children (header, scrollable area, footer) stack vertically
+        - overflow-hidden : prevents overflow outside the modal
+      */}
       <DialogContent className="sm:max-w-[650px] p-0 overflow-hidden flex flex-col max-h-[90vh]">
         
-        {/* Header: Visual confirmation of the active task */}
-        <DialogHeader className="p-6 bg-primary/5 border-b">
+        {/* Fixed header */}
+        <DialogHeader className="p-6 bg-primary/5 border-b shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary rounded-lg text-white shadow-sm">
               <ClipboardCheck className="w-5 h-5" />
@@ -109,10 +113,12 @@ export default function FindingsModal({
           </div>
         </DialogHeader>
 
-        {/* Scrollable Content Area: Prevents modal items from overflowing screen */}
+        {/* 
+          Scrollable content: takes all remaining space (flex-1) 
+          and shows vertical scrollbar when content overflows.
+        */}
         <ScrollArea className="flex-1">
           <div className="p-6 space-y-8">
-
             <Separator className="opacity-50" />
 
             {/* Parts Integration Section */}
@@ -179,12 +185,11 @@ export default function FindingsModal({
                 rows={4}
               />
             </div>
-
           </div>
         </ScrollArea>
 
-        {/* Footer: Persistent action bar */}
-        <DialogFooter className="p-6 border-t bg-muted/10 gap-3">
+        {/* Fixed footer */}
+        <DialogFooter className="p-6 border-t bg-muted/10 gap-3 shrink-0">
           <Button 
             variant="ghost" 
             onClick={onClose} 

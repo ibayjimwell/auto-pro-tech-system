@@ -17,7 +17,6 @@ import {
   Pencil, 
   Trash2, 
   Search, 
-  KeyRound, 
   AlertCircle, 
   Copy, 
   Eye, 
@@ -67,7 +66,6 @@ export default function StaffManagement() {
     permissions: [],
   });
   const [saving, setSaving] = useState(false);
-  const [resetDialog, setResetDialog] = useState({ open: false, staff: null, tempPassword: '' });
   const [tempPasswordDialog, setTempPasswordDialog] = useState({ open: false, tempPassword: '', staffName: '' });
   const [showTempPassword, setShowTempPassword] = useState(false);
 
@@ -176,19 +174,6 @@ export default function StaffManagement() {
     }
   };
 
-  const handleResetPassword = async (staff) => {
-    try {
-      const res = await staffApi.resetPassword(staff.id);
-      setResetDialog({
-        open: true,
-        staff,
-        tempPassword: res.data.tempPassword,
-      });
-    } catch (err) {
-      notify.error('Failed to reset password');
-    }
-  };
-
   const togglePermission = (mod) => {
     setForm(prev => ({
       ...prev,
@@ -274,9 +259,6 @@ export default function StaffManagement() {
                       <Button variant="ghost" size="icon" onClick={() => openEdit(staff)} className="h-9 w-9 rounded-xl text-slate-400">
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleResetPassword(staff)} className="h-9 w-9 rounded-xl text-primary/60">
-                        <KeyRound className="w-4 h-4" />
-                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => handleDelete(staff.id)} className="h-9 w-9 rounded-xl text-red-400">
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -341,9 +323,6 @@ export default function StaffManagement() {
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(staff)} className="h-9 w-9 rounded-xl hover:bg-white hover:shadow-sm text-slate-400 hover:text-primary transition-all">
                           <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleResetPassword(staff)} className="h-9 w-9 rounded-xl hover:bg-primary/5 text-primary/60 transition-all">
-                          <KeyRound className="w-4 h-4" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleDelete(staff.id)} className="h-9 w-9 rounded-xl hover:bg-red-50 text-red-400 transition-all">
                           <Trash2 className="w-4 h-4" />
@@ -501,51 +480,6 @@ export default function StaffManagement() {
           </div>
         </div>
       </DataModal>
-
-      {/* --- Reset Password (Security Dialog) --- */}
-      <Dialog open={resetDialog.open} onOpenChange={(open) => setResetDialog({ ...resetDialog, open })}>
-        <DialogContent className="rounded-[2rem] sm:max-w-md border-none shadow-2xl">
-          <DialogHeader className="items-center text-center">
-            <div className="w-16 h-16 bg-amber-50 rounded-3xl flex items-center justify-center mb-4">
-              <KeyRound className="w-8 h-8 text-amber-500" />
-            </div>
-            <DialogTitle className="text-xl font-black text-slate-800">Password Reset Generated</DialogTitle>
-            <DialogDescription className="text-slate-400 text-sm">
-              Temporary credentials for <strong>{resetDialog.staff?.fullName}</strong> are now active.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 text-center space-y-4">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Temporary Access Key</p>
-              <code className="text-3xl font-mono font-black text-primary tracking-tighter">
-                {resetDialog.tempPassword}
-              </code>
-            </div>
-            <Button 
-              variant="outline" 
-              className="w-full rounded-2xl border-slate-200 font-bold h-11"
-              onClick={() => copyToClipboard(resetDialog.tempPassword)}
-            >
-              <Copy className="w-4 h-4 mr-2" /> Copy to Clipboard
-            </Button>
-          </div>
-
-          <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-2xl">
-            <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
-            <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
-              This credential expires in 24 hours. The staff member will be required to define a unique password upon their next system entry.
-            </p>
-          </div>
-          
-          <Button 
-            className="w-full rounded-2xl h-12 font-black uppercase tracking-widest"
-            onClick={() => setResetDialog({ open: false, staff: null, tempPassword: '' })}
-          >
-            Acknowledge
-          </Button>
-        </DialogContent>
-      </Dialog>
 
       {/* --- New Creation (Security Dialog) --- */}
       <Dialog open={tempPasswordDialog.open} onOpenChange={(open) => setTempPasswordDialog({ ...tempPasswordDialog, open })}>

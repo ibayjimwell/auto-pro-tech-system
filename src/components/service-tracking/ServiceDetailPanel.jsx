@@ -783,7 +783,7 @@ export default function ServiceDetailPanel({
 
               {showSendButton && (
                 <Button
-                  onClick={handleSendInitialCost}
+                  onClick={confirmSendInitialCost}
                   disabled={sendingCost}
                   className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-12 shadow-lg shadow-primary/20"
                 >
