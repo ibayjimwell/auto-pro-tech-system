@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Plus, 
@@ -17,7 +16,6 @@ import {
   Pencil, 
   Trash2, 
   Search, 
-  AlertCircle, 
   Copy, 
   Eye, 
   EyeOff,
@@ -36,7 +34,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter
 } from '@/components/ui/dialog';
 
 const MODULES = ['Appointments', 'Service Tracking', 'Invoices', 'Customers', 'Vehicles', 'Service Types', 'Staff'];
@@ -410,48 +407,17 @@ export default function StaffManagement() {
             </div>
           </div>
 
-          {/* Security Credentials (Optional Update) */}
-          {editing && (
-            <div className="space-y-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-primary">Security Update</Label>
-              <Input
-                type="password"
-                value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
-                placeholder="Enter new password (optional)"
-                className="rounded-xl border-slate-200 bg-white"
-              />
-              <p className="text-[9px] text-slate-400 font-medium">Leave empty to keep existing password.</p>
-            </div>
-          )}
-
+        
           {/* Organizational Role */}
           <div className="space-y-2">
             <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Organizational Role</Label>
-            <Select value={form.role} onValueChange={v => setForm({ ...form, role: v })}>
-              <SelectTrigger className="rounded-xl border-slate-200"><SelectValue /></SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="Admin">Admin</SelectItem>
-                <SelectItem value="Staff">General Staff</SelectItem>
-                <SelectItem value="Mechanic">Mechanic</SelectItem>
-                <SelectItem value="Cashier">Cashier</SelectItem>
-                <SelectItem value="Senior Mechanic">Senior Mechanic</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Account Status */}
-          <div className="flex items-center gap-3 p-4 bg-white border border-slate-100 rounded-2xl">
-            <Checkbox 
-              id="active" 
-              checked={form.active} 
-              onCheckedChange={(checked) => setForm({ ...form, active: !!checked })} 
-              className="rounded-md h-5 w-5"
+            <Input
+              value={form.role}
+              onChange={e => setForm({ ...form, role: e.target.value })}
+              placeholder="Ex. Mechanic, Cashier, Service Advisor..."
+              className="rounded-xl border-slate-200 focus:ring-primary/20"
             />
-            <div className="grid gap-0.5 leading-none">
-              <Label htmlFor="active" className="text-sm font-black text-slate-800 cursor-pointer">Grant Account Access</Label>
-              <p className="text-[10px] text-slate-400 font-medium tracking-tight">Toggle to enable or disable system entry for this user.</p>
-            </div>
+            <p className="text-[10px] font-medium text-slate-400">Enter the staff member's role title</p>
           </div>
 
           {/* Module Access Grid */}
