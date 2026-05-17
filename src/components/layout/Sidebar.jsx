@@ -29,14 +29,14 @@ import {
 
 // Navigation Configuration
 const NAV_ITEMS = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard, module: "dashboard" },
-  { path: "/customers", label: "Customers", icon: Users, module: "customers" },
-  { path: "/appointments", label: "Appointments", icon: CalendarDays, module: "appointments" },
-  { path: "/service-types", label: "Service Types", icon: Cog, module: "service-types" },
-  { path: "/staff", label: "Staff", icon: UserCog, module: "staff" },
-  { path: "/service-tracking", label: "Service Tracking", icon: Activity, module: "service-tracking" },
-  { path: "/inventory", label: "Inventory", icon: Package, module: "inventory" },
-  { path: "/invoices", label: "Invoices", icon: FileText, module: "invoices" },
+  { path: "/", label: "Dashboard", icon: LayoutDashboard, module: "Dashboard" },
+  { path: "/customers", label: "Customers", icon: Users, module: "Customers" },
+  { path: "/appointments", label: "Appointments", icon: CalendarDays, module: "Appointments" },
+  { path: "/service-types", label: "Service Types", icon: Cog, module: "Service Types" },
+  { path: "/staff", label: "Staff", icon: UserCog, module: "Staff" },
+  { path: "/service-tracking", label: "Service Tracking", icon: Activity, module: "Service Tracking" },
+  { path: "/inventory", label: "Inventory", icon: Package, module: "Inventory" },
+  { path: "/invoices", label: "Invoices", icon: FileText, module: "Invoices" },
 ];
 
 /**

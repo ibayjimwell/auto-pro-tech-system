@@ -17,6 +17,10 @@ export const AuthProvider = ({ children }) => {
     if (storedToken && storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
+        // Ensure permissions is an array
+        if (typeof parsedUser.permissions === 'string') {
+          parsedUser.permissions = JSON.parse(parsedUser.permissions);
+        }
         setToken(storedToken);
         setUser(parsedUser);
         setIsAuthenticated(true);
@@ -54,12 +58,22 @@ export const AuthProvider = ({ children }) => {
       }
 
       // Normal login
+      let staffPermissions = data.staff.permissions;
+      if (typeof staffPermissions === 'string') {
+        try {
+          staffPermissions = JSON.parse(staffPermissions);
+        } catch (e) {
+          staffPermissions = [];
+        }
+      }
+      if (!Array.isArray(staffPermissions)) staffPermissions = [];
+
       const userData = {
         id: data.staff.id,
         username: data.staff.username,
         name: data.staff.fullName,
         role: data.staff.role || 'staff',
-        permissions: data.staff.permissions || [],
+        permissions: staffPermissions,
       };
 
       localStorage.setItem("auth_token", data.token);

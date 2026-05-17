@@ -47,6 +47,7 @@ import {
   Search,
   ChevronRight,
   Info,
+  FileText
 } from "lucide-react";
 
 // API & Context
@@ -448,6 +449,12 @@ export default function ServiceDetailPanel({
                 <span className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md">
                   <Clock className="w-4 h-4 text-primary" />{" "}
                   {appointment.appointmentDate} • {appointment.appointmentTime}
+                </span>
+              )}
+              {appointment.notes && (
+                <span className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md">
+                  <FileText className="w-4 h-4 text-primary" />
+                  <span className="max-w-md truncate">Note: {appointment.notes}</span>
                 </span>
               )}
             </div>

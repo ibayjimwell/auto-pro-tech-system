@@ -77,7 +77,7 @@ function App() {
               <Route
                 path="/customers"
                 element={
-                  <ProtectedRoute module="customers">
+                  <ProtectedRoute module="Customers">
                     <Customers />
                   </ProtectedRoute>
                 }
@@ -85,7 +85,7 @@ function App() {
               <Route
                 path="/appointments"
                 element={
-                  <ProtectedRoute module="appointments">
+                  <ProtectedRoute module="Appointments">
                     <Appointments />
                   </ProtectedRoute>
                 }
@@ -93,7 +93,7 @@ function App() {
               <Route
                 path="/service-types"
                 element={
-                  <ProtectedRoute module="service-types">
+                  <ProtectedRoute module="Service Types">
                     <ServiceTypes />
                   </ProtectedRoute>
                 }
@@ -101,7 +101,7 @@ function App() {
               <Route
                 path="/staff"
                 element={
-                  <ProtectedRoute module="staff">
+                  <ProtectedRoute module="Staff">
                     <Staff />
                   </ProtectedRoute>
                 }
@@ -109,7 +109,7 @@ function App() {
               <Route
                 path="/service-tracking"
                 element={
-                  <ProtectedRoute module="service-tracking">
+                  <ProtectedRoute module="Service Tracking">
                     <ServiceTracking />
                   </ProtectedRoute>
                 }
@@ -117,7 +117,7 @@ function App() {
               <Route
                 path="/invoices"
                 element={
-                  <ProtectedRoute module="invoices">
+                  <ProtectedRoute module="Invoices">
                     <Invoices />
                   </ProtectedRoute>
                 }
@@ -125,7 +125,7 @@ function App() {
               <Route
                 path="/inventory"
                 element={
-                  <ProtectedRoute module="inventory">
+                  <ProtectedRoute module="Inventory">
                     <Inventory />
                   </ProtectedRoute>
                 }

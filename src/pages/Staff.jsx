@@ -36,7 +36,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-const MODULES = ['Appointments', 'Service Tracking', 'Invoices', 'Customers', 'Vehicles', 'Service Types', 'Staff'];
+const MODULES = ['Dashboard', 'Appointments', 'Service Tracking', 'Invoices', 'Customers', 'Service Types', 'Staff', 'Inventory'];
 
 /**
  * StaffManagement Component: Advanced Team & Permissions Control

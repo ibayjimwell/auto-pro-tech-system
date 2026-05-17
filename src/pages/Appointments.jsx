@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { 
   CalendarDays, Loader2, Car, User, Phone, Clock, CheckCircle, 
-  XCircle, Filter, Search, PlusCircle, Wrench, UserCircle 
+  XCircle, Filter, Search, PlusCircle, Wrench, UserCircle, FileText
 } from 'lucide-react';
 
 // --- API & State ---
@@ -302,6 +302,19 @@ export default function Appointments() {
                     </Select>
                   </div>
 
+                  {/* Additional Notes / Description */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black uppercase text-slate-500">
+                      Additional Notes / Describe the issue
+                    </Label>
+                    <Textarea
+                      placeholder="e.g., Engine makes a ticking noise, AC not cooling, etc."
+                      className="rounded-xl border-slate-200 focus:ring-primary/20 min-h-[100px]"
+                      {...register('notes')}
+                    />
+                    <p className="text-[10px] text-slate-400">Let us know any special requests or symptoms.</p>
+                  </div>
+
                   {/* Time Selection */}
                   <div className="space-y-2 md:col-span-2">
                     <Label className="text-xs font-black uppercase text-slate-500">Available Slot</Label>
@@ -438,108 +451,121 @@ export default function Appointments() {
         </div>
 
         {/* --- RIGHT: Daily Agenda & Filtering --- */}
-        <div className="lg:col-span-4 h-full">
-          <Card className="flex flex-col h-[calc(100vh-12rem)] shadow-xl border-none rounded-3xl overflow-hidden bg-white">
-            <CardHeader className="bg-slate-900 text-white pb-6">
-              <div className="flex justify-between items-center mb-4">
-                <CardTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-primary" /> Daily Agenda
-                </CardTitle>
-                <div className="bg-primary/20 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase">
-                  {filteredAppointments.length} Booked
+      <div className="lg:col-span-4 h-full">
+        <Card className="flex flex-col h-[calc(100vh-12rem)] shadow-xl border-none rounded-3xl overflow-hidden bg-white">
+          <CardHeader className="bg-slate-900 text-white pb-6">
+            <div className="flex justify-between items-center mb-4">
+              <CardTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" /> Daily Agenda
+              </CardTitle>
+              <div className="bg-primary/20 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase">
+                {filteredAppointments.length} Booked
+              </div>
+            </div>
+            <div className="relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input 
+                placeholder="Filter by plate or name..." 
+                className="pl-10 bg-white/10 border-white/10 text-white placeholder:text-slate-400 h-10 rounded-xl"
+                value={sidebarFilter}
+                onChange={(e) => setSidebarFilter(e.target.value)}
+              />
+            </div>
+          </CardHeader>
+          
+          <CardContent className="flex-1 overflow-y-auto pt-6 space-y-4">
+            {filteredAppointments.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CalendarDays className="text-slate-300 w-8 h-8" />
                 </div>
+                <p className="text-xs font-bold text-slate-400 uppercase">Clear Schedule</p>
               </div>
-              <div className="relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input 
-                  placeholder="Filter by plate or name..." 
-                  className="pl-10 bg-white/10 border-white/10 text-white placeholder:text-slate-400 h-10 rounded-xl"
-                  value={sidebarFilter}
-                  onChange={(e) => setSidebarFilter(e.target.value)}
-                />
-              </div>
-            </CardHeader>
-            
-            <CardContent className="flex-1 overflow-y-auto pt-6 space-y-4">
-              {filteredAppointments.length === 0 ? (
-                <div className="text-center py-20">
-                  <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CalendarDays className="text-slate-300 w-8 h-8" />
+            ) : (
+              filteredAppointments.map((appt) => (
+                <div key={appt.id} className="group p-4 rounded-2xl border border-slate-100 hover:border-primary/30 bg-white hover:shadow-md transition-all">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-full">
+                      <Clock className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-xs font-black text-slate-700">
+                        {formatTime12h(appt.appointmentTime)}
+                      </span>
+                    </div>
+                    <StatusBadge status={appt.status || 'PENDING'} className="text-[9px] font-black" />
                   </div>
-                  <p className="text-xs font-bold text-slate-400 uppercase">Clear Schedule</p>
-                </div>
-              ) : (
-                filteredAppointments.map((appt) => (
-                  <div key={appt.id} className="group p-4 rounded-2xl border border-slate-100 hover:border-primary/30 bg-white hover:shadow-md transition-all">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-full">
-                        <Clock className="w-3.5 h-3.5 text-primary" />
-                        <span className="text-xs font-black text-slate-700">
-                          {formatTime12h(appt.appointmentTime)}
-                        </span>
-                      </div>
-                      <StatusBadge status={appt.status || 'PENDING'} className="text-[9px] font-black" />
-                    </div>
 
-                    <div className="space-y-3">
-                      {/* Vehicle Info */}
-                      <div className="flex gap-3">
-                        <div className="bg-primary/10 p-2 rounded-lg h-fit"><Car className="w-4 h-4 text-primary" /></div>
-                        <div>
-                          <p className="text-xs font-black uppercase text-slate-900">{appt.vehicle?.make} {appt.vehicle?.model}</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Plate: {appt.vehicle?.plateNumber}</p>
-                        </div>
-                      </div>
-
-                      {/* Service Type Info (NEW) */}
-                      <div className="flex gap-3">
-                        <div className="bg-primary/10 p-2 rounded-lg h-fit"><Wrench className="w-4 h-4 text-primary" /></div>
-                        <div>
-                          <p className="text-xs font-black uppercase text-slate-900">{appt.serviceType?.name || 'Service'}</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                            ₱{appt.serviceType?.basePrice} · {appt.serviceType?.durationMinutes} min
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Customer Info */}
-                      <div className="flex gap-3">
-                        <div className="bg-slate-100 p-2 rounded-lg h-fit"><UserCircle className="w-4 h-4 text-slate-500" /></div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-700 leading-none mt-1">{appt.customer?.fullName}</p>
-                          <p className="text-[10px] text-slate-400 mt-1">{appt.customer?.phone}</p>
-                        </div>
+                  <div className="space-y-3">
+                    {/* Vehicle Info */}
+                    <div className="flex gap-3">
+                      <div className="bg-primary/10 p-2 rounded-lg h-fit"><Car className="w-4 h-4 text-primary" /></div>
+                      <div>
+                        <p className="text-xs font-black uppercase text-slate-900">{appt.vehicle?.make} {appt.vehicle?.model}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Plate: {appt.vehicle?.plateNumber}</p>
                       </div>
                     </div>
 
-                    {/* Quick Actions for Pending */}
-                    {appt.status === 'PENDING' && (
-                      <div className="grid grid-cols-2 gap-2 mt-4">
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="text-green-600 hover:bg-green-50 h-8 text-[10px] font-black uppercase"
-                          onClick={() => handleConfirm(appt)}
-                        >
-                          Confirm
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="text-red-400 hover:bg-red-50 h-8 text-[10px] font-black uppercase"
-                          onClick={() => setDeclineModal({ open: true, appointment: appt, reason: '' })}
-                        >
-                          Decline
-                        </Button>
+                    {/* Service Type Info */}
+                    <div className="flex gap-3">
+                      <div className="bg-primary/10 p-2 rounded-lg h-fit"><Wrench className="w-4 h-4 text-primary" /></div>
+                      <div>
+                        <p className="text-xs font-black uppercase text-slate-900">{appt.serviceType?.name || 'Service'}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                          ₱{appt.serviceType?.basePrice} · {appt.serviceType?.durationMinutes} min
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Customer Info */}
+                    <div className="flex gap-3">
+                      <div className="bg-slate-100 p-2 rounded-lg h-fit"><UserCircle className="w-4 h-4 text-slate-500" /></div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-700 leading-none mt-1">{appt.customer?.fullName}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">{appt.customer?.phone}</p>
+                      </div>
+                    </div>
+
+                    {/* --- NEW: Additional Notes / Description --- */}
+                    {appt.notes && (
+                      <div className="flex gap-3 mt-2">
+                        <div className="bg-amber-50 p-2 rounded-lg h-fit">
+                          <FileText className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[10px] font-bold uppercase text-amber-700 mb-0.5">Customer Note</p>
+                          <p className="text-xs text-slate-600 italic leading-relaxed">{appt.notes}</p>
+                        </div>
                       </div>
                     )}
                   </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
+
+                  {/* Quick Actions for Pending */}
+                  {appt.status === 'PENDING' && (
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="text-green-600 hover:bg-green-50 h-8 text-[10px] font-black uppercase"
+                        onClick={() => handleConfirm(appt)}
+                      >
+                        Confirm
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="text-red-400 hover:bg-red-50 h-8 text-[10px] font-black uppercase"
+                        onClick={() => setDeclineModal({ open: true, appointment: appt, reason: '' })}
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
+    </div>
 
       {/* Decline Reason Dialog */}
       <Dialog open={declineModal.open} onOpenChange={(open) => setDeclineModal({ ...declineModal, open })}>

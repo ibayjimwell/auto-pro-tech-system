@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const BASE_URL = 'https://auto-pro-tech-api.onrender.com/api/v1';
+export const BASE_URL = 'http://localhost:4000/api/v1';
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
