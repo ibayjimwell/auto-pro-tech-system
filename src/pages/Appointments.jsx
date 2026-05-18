@@ -219,7 +219,7 @@ export default function Appointments() {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <PageContainer title="Service Scheduler" subtitle="Manage shop flow and customer bookings">
+    <PageContainer title="Service Scheduler" subtitle="Confirm or decline customer bookings">
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
@@ -443,7 +443,7 @@ export default function Appointments() {
                   className="w-full h-14 rounded-2xl text-base font-black uppercase shadow-lg shadow-primary/20"
                 >
                   {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle className="mr-2 w-5 h-5" />}
-                  Confirm Appointment
+                  Add Appointment
                 </Button>
               </form>
             </CardContent>

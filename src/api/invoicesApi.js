@@ -1,6 +1,7 @@
 import apiClient from './client';
 
 export const invoicesApi = {
+  list: (status = '') => apiClient.get(`/invoices${status ? `?status=${status}` : ''}`),
   create: (data) => apiClient.post('/invoices', data),
   get: (id) => apiClient.get(`/invoices/${id}`),
   getByAppointment: (appointmentId) => apiClient.get(`/invoices/appointment/${appointmentId}`),

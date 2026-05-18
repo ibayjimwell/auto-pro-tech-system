@@ -19,7 +19,8 @@ import {
   ChevronLeft, 
   ChevronRight,
   Clock,
-  Tag
+  Tag,
+  CheckCircle2,
 } from 'lucide-react';
 import { serviceTypesApi } from '@/api/serviceTypesApi';
 import { notify } from '@/lib/notify';
@@ -46,6 +47,7 @@ export default function ServiceTypes() {
   const [form, setForm] = useState({ name: '', description: '', basePrice: '', durationMinutes: '' });
   const [saving, setSaving] = useState(false);
   const [deactivateDialog, setDeactivateDialog] = useState({ open: false, id: null, name: '' });
+  const [enableDialog, setEnableDialog] = useState({ open: false, id: null, name: '' });
   const [permanentDeleteDialog, setPermanentDeleteDialog] = useState({ open: false, id: null, name: '' });
 
   /* --- Data Loading --- */
@@ -129,6 +131,17 @@ export default function ServiceTypes() {
       load();
     } catch (err) {
       notify.error('Failed to deactivate');
+    }
+  };
+
+  const handleEnable = async () => {
+    try {
+      await serviceTypesApi.enable(enableDialog.id);
+      notify.success(`"${enableDialog.name}" has been enabled`);
+      setEnableDialog({ open: false, id: null, name: '' });
+      load();
+    } catch (err) {
+      notify.error('Failed to enable service');
     }
   };
 
@@ -225,8 +238,8 @@ export default function ServiceTypes() {
                           <PowerOff className="w-4 h-4" />
                         </Button>
                       ) : (
-                        <Button variant="ghost" size="icon" onClick={() => setPermanentDeleteDialog({ open: true, id: st.id, name: st.name })} className="h-8 w-8 rounded-lg text-red-400">
-                          <Trash2 className="w-4 h-4" />
+                        <Button variant="ghost" size="icon" onClick={() => setEnableDialog({ open: true, id: st.id, name: st.name })} className="h-8 w-8 rounded-lg text-green-400">
+                          <CheckCircle2 className="w-4 h-4" />
                         </Button>
                       )}
                     </div>
@@ -254,7 +267,7 @@ export default function ServiceTypes() {
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-8">Service Detail</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pricing</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Duration</TableHead>
-                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-right pr-8">Management</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-right pr-8">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -278,7 +291,7 @@ export default function ServiceTypes() {
                       </div>
                     </TableCell>
                     <TableCell className="pr-8">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(st)} className="h-9 w-9 rounded-xl hover:bg-white hover:shadow-sm text-slate-400 hover:text-primary transition-all">
                           <Pencil className="w-4 h-4" />
                         </Button>
@@ -287,9 +300,11 @@ export default function ServiceTypes() {
                             <PowerOff className="w-4 h-4" />
                           </Button>
                         ) : (
-                          <Button variant="ghost" size="icon" onClick={() => setPermanentDeleteDialog({ open: true, id: st.id, name: st.name })} className="h-9 w-9 rounded-xl hover:bg-red-50 text-red-400 transition-all">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => setEnableDialog({ open: true, id: st.id, name: st.name })} className="h-9 w-9 rounded-xl hover:bg-green-50 text-green-500 transition-all">
+                              <CheckCircle2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </TableCell>
@@ -403,6 +418,17 @@ export default function ServiceTypes() {
         description={`This will hide "${deactivateDialog.name}" from the customer booking portal. You can reactivate it later.`}
         onConfirm={handleDeactivate}
         confirmText="Deactivate Service"
+        variant="default"
+      />
+
+      {/* Enable Confirmation Dialog */}
+      <ConfirmationDialog
+        open={enableDialog.open}
+        onOpenChange={(open) => setEnableDialog({ ...enableDialog, open })}
+        title="Enable Service"
+        description={`Reactivate "${enableDialog.name}"? It will become available again in the customer booking portal.`}
+        onConfirm={handleEnable}
+        confirmText="Enable Service"
         variant="default"
       />
 

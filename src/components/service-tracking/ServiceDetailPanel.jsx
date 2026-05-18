@@ -47,7 +47,7 @@ import {
   Search,
   ChevronRight,
   Info,
-  FileText
+  FileText,
 } from "lucide-react";
 
 // API & Context
@@ -139,13 +139,14 @@ export default function ServiceDetailPanel({
       const labors = adjustments.filter((a) => a.type === "labor");
       const disc = adjustments.filter((a) => a.type === "discount");
       setLaborItems(
-        labors.map((l) => ({ id: l.id, amount: parseFloat(l.amount) })),
+        labors.map((l) => ({ id: l.id, amount: parseFloat(l.amount), label: l.label })),
       );
       setDiscounts(
         disc.map((d) => ({
           id: d.id,
           type: d.discountType,
           value: parseFloat(d.discountValue),
+          label: d.label,
         })),
       );
     } catch (err) {
@@ -302,9 +303,10 @@ export default function ServiceDetailPanel({
     const amount = parseFloat(newAdditionalAmount);
     if (isNaN(amount) || amount <= 0) return notify.error("Enter valid amount");
     try {
+      // For initial stage, treat as a "labor" item but label it as "Part: ..."
       await estimateApi.addLabor(appointment.id, {
         amount,
-        label: newAdditionalDesc || "Part",
+        label: newAdditionalDesc ? `Part: ${newAdditionalDesc}` : "Part",
       });
       setNewAdditionalAmount("");
       setNewAdditionalDesc("");
@@ -344,8 +346,71 @@ export default function ServiceDetailPanel({
       setNewAdditionalAmount("");
       setNewAdditionalDesc("");
       setLaborModalOpen(false);
+      loadAdditionalCosts();
     } catch (err) {
       notify.error("Failed to add cost");
+    }
+  };
+
+  // Add additional part (during IN_PROGRESS) – now uses addPart (not addLabor)
+  const addAdditionalPart = async () => {
+    const amount = parseFloat(newAdditionalAmount);
+    if (isNaN(amount) || amount <= 0) return notify.error("Enter valid amount");
+    try {
+      // Use dedicated addPart method if available, otherwise fallback with type
+      await additionalCostsApi.addPart(appointment.id, {
+        amount,
+        description: newAdditionalDesc || "Part",
+      });
+      setNewAdditionalAmount("");
+      setNewAdditionalDesc("");
+      setAdditionalPartModalOpen(false);
+      loadAdditionalCosts();
+    } catch (err) {
+      // Fallback: add as a cost with type 'part'
+      try {
+        await additionalCostsApi.addCost(appointment.id, {
+          type: "part",
+          amount,
+          description: newAdditionalDesc || "Part",
+        });
+        setNewAdditionalAmount("");
+        setNewAdditionalDesc("");
+        setAdditionalPartModalOpen(false);
+        loadAdditionalCosts();
+      } catch (fallbackErr) {
+        notify.error("Failed to add part");
+      }
+    }
+  };
+
+  // Add additional discount (during IN_PROGRESS)
+  const addAdditionalDiscount = async () => {
+    const value = parseFloat(newDiscountValue);
+    if (isNaN(value) || value <= 0) return notify.error("Enter valid discount value");
+    try {
+      await additionalCostsApi.addDiscount(appointment.id, {
+        discountType: newDiscountType,
+        discountValue: value,
+        description: newAdditionalDesc || "Discount",
+      });
+      setNewDiscountValue("");
+      setNewDiscountType("fixed");
+      setNewAdditionalDesc("");
+      setDiscountModalOpen(false);
+      loadAdditionalCosts();
+    } catch (err) {
+      notify.error("Failed to add discount");
+    }
+  };
+
+  // Remove additional cost (for IN_PROGRESS items)
+  const removeAdditionalCost = async (costId) => {
+    try {
+      await additionalCostsApi.remove(costId);
+      loadAdditionalCosts();
+    } catch (err) {
+      notify.error("Failed to remove cost");
     }
   };
 
@@ -695,7 +760,7 @@ export default function ServiceDetailPanel({
                       (item, idx) => (
                         <div
                           key={item.id || idx}
-                          className="flex justify-between items-center group text-sm"
+                          className="flex justify-between items-center text-sm"
                         >
                           <div className="flex items-center gap-2">
                             <span className="text-muted-foreground">
@@ -725,7 +790,7 @@ export default function ServiceDetailPanel({
                                       .then(loadAdjustments)
                                   : removeAdditionalCost(item.id)
                               }
-                              className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="text-destructive hover:text-destructive/80 transition-colors"
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -745,12 +810,13 @@ export default function ServiceDetailPanel({
                     {computedDiscounts.map((disc) => (
                       <div
                         key={disc.id}
-                        className="flex justify-between items-center group text-sm"
+                        className="flex justify-between items-center text-sm"
                       >
                         <span className="text-green-600 italic font-medium">
                           {disc.type === "percentage"
                             ? `${disc.value}% off`
                             : "Discount"}
+                          {disc.label && ` (${disc.label})`}
                         </span>
                         <div className="flex items-center gap-2 text-green-600">
                           <span className="font-mono">
@@ -765,7 +831,7 @@ export default function ServiceDetailPanel({
                                 .removeDiscount(disc.id)
                                 .then(loadAdjustments)
                             }
-                            className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="text-destructive hover:text-destructive/80 transition-colors"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -794,7 +860,7 @@ export default function ServiceDetailPanel({
                   disabled={sendingCost}
                   className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-12 shadow-lg shadow-primary/20"
                 >
-                  {sendingCost ? "Processing..." : "Submit Quote to Customer"}
+                  {sendingCost ? "Processing..." : "Submit Costing"}
                 </Button>
               )}
             </div>
@@ -815,7 +881,6 @@ export default function ServiceDetailPanel({
           </DialogHeader>
           <ScrollArea className="flex-1 p-6">
             <div className="space-y-6">
-
               <div className="space-y-4">
                 <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
                   Required Parts & Supplies
@@ -861,17 +926,16 @@ export default function ServiceDetailPanel({
                 )}
 
                 <div className="space-y-2">
-                <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                  Finding Details
-                </Label>
-                <Textarea
-                  value={findingDescription}
-                  onChange={(e) => setFindingDescription(e.target.value)}
-                  placeholder="Describe what you discovered during the inspection..."
-                  className="min-h-[120px] rounded-xl focus-visible:ring-primary/30"
-                />
-              </div>
-
+                  <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                    Finding Details
+                  </Label>
+                  <Textarea
+                    value={findingDescription}
+                    onChange={(e) => setFindingDescription(e.target.value)}
+                    placeholder="Describe what you discovered during the inspection..."
+                    className="min-h-[120px] rounded-xl focus-visible:ring-primary/30"
+                  />
+                </div>
               </div>
             </div>
           </ScrollArea>
@@ -893,8 +957,7 @@ export default function ServiceDetailPanel({
         </DialogContent>
       </Dialog>
 
-      {/* Generic Input Modals (Labor/Part/Discount) */}
-      {/* These handle both initial and in-progress states */}
+      {/* Labor Modal */}
       <Dialog
         open={initialLaborModalOpen || laborModalOpen}
         onOpenChange={(val) => {
@@ -955,6 +1018,145 @@ export default function ServiceDetailPanel({
               className="flex-1 rounded-xl"
             >
               Add to Bill
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Part Modal */}
+      <Dialog
+        open={initialPartModalOpen || additionalPartModalOpen}
+        onOpenChange={(val) => {
+          setInitialPartModalOpen(val);
+          setAdditionalPartModalOpen(val);
+        }}
+      >
+        <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0">
+          <DialogHeader className="p-6 bg-primary/5">
+            <DialogTitle className="flex items-center gap-2">
+              <PlusCircle className="w-5 h-5 text-primary" /> Add Part / Material
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-6 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">
+                Amount (₱)
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 font-bold text-muted-foreground">₱</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  className="pl-8 rounded-xl h-11"
+                  value={newAdditionalAmount}
+                  onChange={(e) => setNewAdditionalAmount(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">
+                Description
+              </Label>
+              <Input
+                className="rounded-xl h-11"
+                value={newAdditionalDesc}
+                onChange={(e) => setNewAdditionalDesc(e.target.value)}
+                placeholder="e.g., Brake pads, oil filter"
+              />
+            </div>
+          </div>
+          <DialogFooter className="p-6 border-t flex gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setInitialPartModalOpen(false);
+                setAdditionalPartModalOpen(false);
+              }}
+              className="flex-1 rounded-xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={!isInProgress ? addInitialPart : addAdditionalPart}
+              className="flex-1 rounded-xl"
+            >
+              Add to Bill
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Discount Modal */}
+      <Dialog
+        open={initialDiscountModalOpen || discountModalOpen}
+        onOpenChange={(val) => {
+          setInitialDiscountModalOpen(val);
+          setDiscountModalOpen(val);
+        }}
+      >
+        <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0">
+          <DialogHeader className="p-6 bg-primary/5">
+            <DialogTitle className="flex items-center gap-2">
+              <Percent className="w-5 h-5 text-primary" /> Add Discount
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-6 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">
+                Discount Type
+              </Label>
+              <Select value={newDiscountType} onValueChange={setNewDiscountType}>
+                <SelectTrigger className="rounded-xl h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fixed">Fixed Amount (₱)</SelectItem>
+                  <SelectItem value="percentage">Percentage (%)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">
+                {newDiscountType === "fixed" ? "Amount (₱)" : "Percentage (%)"}
+              </Label>
+              <Input
+                type="number"
+                step={newDiscountType === "percentage" ? "1" : "0.01"}
+                className="rounded-xl h-11"
+                value={newDiscountValue}
+                onChange={(e) => setNewDiscountValue(e.target.value)}
+                placeholder={newDiscountType === "fixed" ? "0.00" : "0"}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">
+                Description (optional)
+              </Label>
+              <Input
+                className="rounded-xl h-11"
+                value={newAdditionalDesc}
+                onChange={(e) => setNewAdditionalDesc(e.target.value)}
+                placeholder="e.g., Senior discount, promo code"
+              />
+            </div>
+          </div>
+          <DialogFooter className="p-6 border-t flex gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setInitialDiscountModalOpen(false);
+                setDiscountModalOpen(false);
+              }}
+              className="flex-1 rounded-xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={!isInProgress ? addInitialDiscount : addAdditionalDiscount}
+              className="flex-1 rounded-xl"
+            >
+              Apply Discount
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -25,12 +25,20 @@ import ServiceTracking from "@/pages/ServiceTracking";
 import Invoices from "@/pages/Invoices";
 import Inventory from "@/pages/Inventory";
 
-const ROLE_HOME = {
-  admin: "/",
-  staff: "/",
-  mechanic: "/service-tracking",
-  cashier: "/invoices",
-};
+/**
+ * Registered sidebar navigation paths in order.
+ * Used to determine the first page a user can access.
+ */
+const SIDEBAR_MODULES = [
+  { path: "/", label: "Dashboard", module: "Dashboard" },
+  { path: "/customers", label: "Customers", module: "Customers" },
+  { path: "/appointments", label: "Appointments", module: "Appointments" },
+  { path: "/service-types", label: "Service Types", module: "Service Types" },
+  { path: "/staff", label: "Staff", module: "Staff" },
+  { path: "/service-tracking", label: "Service Tracking", module: "Service Tracking" },
+  { path: "/inventory", label: "Inventory", module: "Inventory" },
+  { path: "/invoices", label: "Invoices", module: "Invoices" },
+];
 
 function AuthGate({ children }) {
   const { user, isLoading } = useAutoAuth();
@@ -48,9 +56,18 @@ function AuthGate({ children }) {
 }
 
 function RoleHome() {
-  const { user } = useAutoAuth();
-  const home = ROLE_HOME[user?.role] || "/";
-  if (home !== "/") return <Navigate to={home} replace />;
+  const { user, hasPermission } = useAutoAuth();
+
+  // Find the first sidebar item the user has permission to access
+  const firstPermitted = SIDEBAR_MODULES.find(
+    (item) => hasPermission(item.module)
+  );
+
+  if (firstPermitted && firstPermitted.path !== "/") {
+    return <Navigate to={firstPermitted.path} replace />;
+  }
+
+  // If Dashboard is the first permitted (or no other match), render Dashboard
   return <Dashboard />;
 }
 

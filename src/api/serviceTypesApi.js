@@ -10,5 +10,6 @@ export const serviceTypesApi = {
   create: (data) => apiClient.post('/service-types', data),
   update: (id, data) => apiClient.put(`/service-types/${id}`, data),
   deactivate: (id) => apiClient.delete(`/service-types/${id}`),   // soft delete
+  enable: (id) => apiClient.put(`/service-types/${id}`, { active: true }),  // reactivate
   permanentDelete: (id) => apiClient.delete(`/service-types/${id}/permanent`),
 };

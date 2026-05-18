@@ -147,7 +147,7 @@ export default function Customers() {
   return (
     <PageContainer
       title="Customers"
-      subtitle="Manage and track your customer base"
+      subtitle="Manage online or walk-in customers"
       actions={
         /* --- Redesigned "Walk In" Button --- */
         <Button onClick={openCreate} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 h-11 px-6 rounded-xl font-bold transition-all active:scale-95">
@@ -231,9 +231,9 @@ export default function Customers() {
             <Table>
               <TableHeader className="bg-slate-50/50">
                 <TableRow className="border-slate-100 hover:bg-transparent">
-                  <TableHead className="py-5 px-6 font-bold text-slate-700">Customer Identity</TableHead>
-                  <TableHead className="py-5 px-6 font-bold text-slate-700">Contact Details</TableHead>
-                  <TableHead className="py-5 px-6 font-bold text-slate-700">Registration Phone</TableHead>
+                  <TableHead className="py-5 px-6 font-bold text-slate-700">Fullname</TableHead>
+                  <TableHead className="py-5 px-6 font-bold text-slate-700">Email Address</TableHead>
+                  <TableHead className="py-5 px-6 font-bold text-slate-700">Phone Number</TableHead>
                   <TableHead className="py-5 px-6 font-bold text-slate-700 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -261,7 +261,7 @@ export default function Customers() {
                       </div>
                     </TableCell>
                     <TableCell className="py-4 px-6 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => setSelectedCustomer(c)} className="rounded-lg hover:bg-primary/10 hover:text-primary">
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -386,7 +386,7 @@ export default function Customers() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-sm font-bold text-slate-700">
-                {editingCustomer ? 'New Password (Optional)' : 'Security Password'}
+                {editingCustomer ? 'New Password (Optional)' : 'Password'}
               </Label>
               <div className="relative group">
                 <Lock className={cn("absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors", focusField === 'pass' ? "text-primary" : "text-slate-400")} />
@@ -403,7 +403,7 @@ export default function Customers() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-bold text-slate-700">Confirm Security</Label>
+              <Label className="text-sm font-bold text-slate-700">Confirm Password</Label>
               <div className="relative group">
                 <ShieldCheck className={cn("absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors", focusField === 'confirm' ? "text-primary" : "text-slate-400")} />
                 <Input

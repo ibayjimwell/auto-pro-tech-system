@@ -131,19 +131,15 @@ export default function Invoices() {
   return (
     <PageContainer
       title="Cashier & Billing"
-      subtitle="Manage PMS estimates, final billing, and shop revenue"
+      subtitle="Manage estimates, final billing, and shop revenue"
       actions={
         <div className="flex gap-2">
           {/* QR Scanner Trigger */}
           <Button 
-            variant="outline" 
             onClick={() => setScanModalOpen(true)}
-            className="border-primary text-primary hover:bg-primary/5 hidden sm:flex"
+            className="bg-primary hover:bg-primary/90 shadow-md"
           >
             <QrCode className="w-4 h-4 mr-2" /> Scan Receipt
-          </Button>
-          <Button onClick={openCreate} className="bg-primary hover:bg-primary/90 shadow-md">
-            <Plus className="w-4 h-4 mr-2" /> New Invoice
           </Button>
         </div>
       }
@@ -159,7 +155,7 @@ export default function Invoices() {
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quick Filter</p>
                 <div className="flex gap-1 mt-1 overflow-x-auto pb-1 no-scrollbar">
-                  {['', 'PENDING_APPROVAL', 'APPROVED', 'PAID'].map(s => (
+                  {['', 'PENDING_APPROVAL', 'APPROVED', 'PENDING', 'PAID'].map(s => (
                     <Button
                       key={s}
                       size="sm"
